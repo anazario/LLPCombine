@@ -556,55 +556,57 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
 }
 
 void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
-    // Look for keys that start with the category prefix followed by an index
-    // e.g., "systematics.abcd_systematics.0.name", "systematics.abcd_systematics.0.type", etc.
-    
-    std::map<int, SystematicConfig> indexed_systematics;
-    
-    for (const auto& pair : parser.values) {
-        if (pair.first.find(category_prefix + ".") == 0) {
-            // Extract the index and property name
-            std::string remainder = pair.first.substr(category_prefix.length() + 1);
-            size_t dot_pos = remainder.find('.');
-            if (dot_pos == std::string::npos) continue;
-            
-            int index = std::stoi(remainder.substr(0, dot_pos));
-            std::string property = remainder.substr(dot_pos + 1);
-            
-            if (property == "name") {
-                indexed_systematics[index].name = pair.second;
-            } else if (property == "type") {
-                indexed_systematics[index].type = pair.second;
-            } else if (property == "value") {
-                indexed_systematics[index].value = std::stod(pair.second);
-            } else if (property == "formula") {
-                indexed_systematics[index].formula = pair.second;
-            }
-        }
+    // Get the list of systematic names
+    if (parser.lists.count(category_prefix) == 0) {
+        return; // No systematics for this category
     }
     
-    // Parse lists (bins, processes, parameters)
-    for (const auto& pair : parser.lists) {
-        if (pair.first.find(category_prefix + ".") == 0) {
-            std::string remainder = pair.first.substr(category_prefix.length() + 1);
-            size_t dot_pos = remainder.find('.');
-            if (dot_pos == std::string::npos) continue;
-            
-            int index = std::stoi(remainder.substr(0, dot_pos));
-            std::string property = remainder.substr(dot_pos + 1);
-            
-            if (property == "bins") {
-                indexed_systematics[index].bins = pair.second;
-            } else if (property == "processes") {
-                indexed_systematics[index].processes = pair.second;
-            } else if (property == "parameters") {
-                indexed_systematics[index].parameters = pair.second;
-            }
-        }
+    const auto& systematic_names = parser.lists.at(category_prefix);
+    
+    // Get common properties for this category
+    std::string common_type;
+    double common_value = 1.0;
+    std::string common_formula;
+    
+    if (parser.values.count(category_prefix + ".type")) {
+        common_type = parser.values.at(category_prefix + ".type");
+    }
+    if (parser.values.count(category_prefix + ".value")) {
+        common_value = std::stod(parser.values.at(category_prefix + ".value"));
+    }
+    if (parser.values.count(category_prefix + ".formula")) {
+        common_formula = parser.values.at(category_prefix + ".formula");
     }
     
-    // Convert indexed map to vector
-    for (const auto& pair : indexed_systematics) {
-        systematics.push_back(pair.second);
+    // Get arrays for bins and processes
+    std::vector<std::string> bins_list;
+    std::vector<std::string> processes_list;
+    
+    if (parser.lists.count(category_prefix + ".bins")) {
+        bins_list = parser.lists.at(category_prefix + ".bins");
+    }
+    if (parser.lists.count(category_prefix + ".processes")) {
+        processes_list = parser.lists.at(category_prefix + ".processes");
+    }
+    
+    // Create systematics - one for each name
+    for (size_t i = 0; i < systematic_names.size(); i++) {
+        SystematicConfig syst;
+        syst.name = systematic_names[i];
+        syst.type = common_type;
+        syst.value = common_value;
+        syst.formula = common_formula;
+        
+        // Assign bins and processes (use index if arrays are long enough)
+        if (i < bins_list.size()) {
+            syst.bins.push_back(bins_list[i]);
+        }
+        if (i < processes_list.size()) {
+            syst.processes.push_back(processes_list[i]);
+        }
+        
+        systematics.push_back(syst);
+        
+        std::cout << "DEBUG: Created systematic: " << syst.name << " (type=" << syst.type << ", value=" << syst.value << ")" << std::endl;
     }
 }
