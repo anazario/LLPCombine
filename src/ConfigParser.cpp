@@ -94,7 +94,8 @@ public:
                         current_anchor_key = "";
                     }
                 } else {
-                    parseKeyValue(line, current_section, current_subsection, current_anchor_key);
+                    // This is a key-value pair at subsection level, so clear subsection
+                    parseKeyValue(line, current_section, "", current_anchor_key);
                 }
             } else {
                 // Third level or list items
@@ -297,7 +298,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     
     // Parse ABCD configuration if method is ABCD
     if (config_.method == "ABCD") {
-        // Parse ABCD regions
+        // Parse ABCD regions - only process keys that start with "abcd.regions."
         for (const auto& pair : parser.values) {
             if (pair.first.find("abcd.regions.") == 0) {
                 std::string region_name = pair.first.substr(13); // Remove "abcd.regions."
@@ -451,15 +452,10 @@ bool ConfigParser::ValidateConfig() const {
 }
 
 bool ConfigParser::ValidateABCDConfig() const {
-    // Debug output
-    std::cerr << "DEBUG: ABCD regions count: " << config_.abcd.regions.size() << std::endl;
-    std::cerr << "DEBUG: Predicted region: '" << config_.abcd.predicted_region << "'" << std::endl;
-    for (const auto& region_pair : config_.abcd.regions) {
-        std::cerr << "DEBUG: Region " << region_pair.first << " -> " << region_pair.second << std::endl;
-    }
-    
     if (!config_.abcd.IsValid()) {
         std::cerr << "Error: Invalid ABCD configuration" << std::endl;
+        std::cerr << "  Regions count: " << config_.abcd.regions.size() << " (expected 4)" << std::endl;
+        std::cerr << "  Predicted region: '" << config_.abcd.predicted_region << "'" << std::endl;
         return false;
     }
     
