@@ -178,8 +178,8 @@ int main(int argc, char* argv[]) {
 	
 	if (verbose) {
 		std::cout << "Found " << signals.size() << " signal processes:" << std::endl;
-		for (const auto& signal : signals) {
-			std::cout << "  " << signal << std::endl;
+		for (size_t i = 0; i < signals.size(); i++) {
+			std::cout << "  " << (i+1) << ". " << signals[i] << std::endl;
 		}
 		std::cout << std::endl;
 	}

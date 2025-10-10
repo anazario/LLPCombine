@@ -114,11 +114,6 @@ void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::stri
 
 void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string datacard_dir, const AnalysisConfig& config) {
     // Validate ABCD configuration
-    std::cout << "DEBUG: In BuildABCDFit, checking config validity..." << std::endl;
-    std::cout << "DEBUG: Regions count: " << config.abcd.regions.size() << std::endl;
-    std::cout << "DEBUG: Predicted region: '" << config.abcd.predicted_region << "'" << std::endl;
-    std::cout << "DEBUG: IsValid result: " << (config.abcd.IsValid() ? "true" : "false") << std::endl;
-    
     if (!config.abcd.IsValid()) {
         std::cerr << "ABCD configuration validation failed:" << std::endl;
         std::cerr << "  Regions count: " << config.abcd.regions.size() << " (expected 4)" << std::endl;
@@ -172,6 +167,11 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     });
     
     // Apply systematics from configuration with auto-resolution
+    std::cout << "DEBUG: Applying systematics..." << std::endl;
+    std::cout << "  Experimental systematics: " << config.experimental_systematics.size() << std::endl;
+    std::cout << "  ABCD systematics: " << config.abcd_systematics.size() << std::endl;
+    std::cout << "  Precision systematics: " << config.precision_systematics.size() << std::endl;
+    
     ApplySystematics(config.experimental_systematics, config.abcd);
     ApplySystematics(config.abcd_systematics, config.abcd);  
     ApplySystematics(config.precision_systematics, config.abcd);
