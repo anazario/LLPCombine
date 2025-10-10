@@ -13,6 +13,8 @@ samples:
   backgrounds: []  # Empty background list for closure test
   signals:
     - "gogoZ"
+  signal_points:
+    - "gogoZ_1500_500_100_10"
   data:
     - "DisplacedJet18"
 
