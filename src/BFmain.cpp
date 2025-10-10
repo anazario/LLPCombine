@@ -118,8 +118,28 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Detect analysis method
-    bool is_abcd = IsABCDMethod(input_json);
+    // Load config file first if provided to determine analysis method
+    ConfigParser* configParser = nullptr;
+    AnalysisConfig analysis_config;
+    bool is_abcd = false;
+    
+    if (!config_file.empty()) {
+        if (!std::filesystem::exists(config_file)) {
+            std::cerr << "Error: Config file not found: " << config_file << std::endl;
+            return 1;
+        }
+        
+        configParser = new ConfigParser();
+        if (!configParser->LoadConfig(config_file)) {
+            std::cerr << "Error: Failed to load config file: " << config_file << std::endl;
+            return 1;
+        }
+        analysis_config = configParser->GetConfig();
+        is_abcd = (analysis_config.method == "ABCD");
+    } else {
+        // Fallback to JSON-based detection if no config file provided
+        is_abcd = IsABCDMethod(input_json);
+    }
     
     if (verbose) {
         std::cout << "=== LLPCombine BuildFit (BF) ===" << std::endl;
@@ -139,29 +159,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    if (is_abcd && !std::filesystem::exists(config_file)) {
-        std::cerr << "Error: Config file not found: " << config_file << std::endl;
-        return 1;
-    }
-    
-    // Load config if ABCD method
-    ConfigParser* configParser = nullptr;
-    AnalysisConfig analysis_config;
-    if (is_abcd) {
-        configParser = new ConfigParser();
-        if (!configParser->LoadConfig(config_file)) {
-            std::cerr << "Error: Failed to load config file: " << config_file << std::endl;
-            return 1;
-        }
-        analysis_config = configParser->GetConfig();
-        
-        if (verbose) {
-            std::cout << "Loaded ABCD configuration:" << std::endl;
-            std::cout << "  Predicted region: " << analysis_config.abcd.predicted_region << std::endl;
-            std::cout << "  Formula: " << analysis_config.abcd.formula << std::endl;
-            std::cout << "  Generate datacards: " << (analysis_config.abcd.generate_datacards ? "yes" : "no") << std::endl;
-            std::cout << std::endl;
-        }
+    if (is_abcd && verbose) {
+        std::cout << "Loaded ABCD configuration:" << std::endl;
+        std::cout << "  Predicted region: " << analysis_config.abcd.predicted_region << std::endl;
+        std::cout << "  Formula: " << analysis_config.abcd.formula << std::endl;
+        std::cout << "  Generate datacards: " << (analysis_config.abcd.generate_datacards ? "yes" : "no") << std::endl;
+        std::cout << std::endl;
     }
 
 	// Load JSON and get signal processes
