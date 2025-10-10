@@ -1,0 +1,125 @@
+# ABCD Closure Test Configuration
+# Testing ABCD method by predicting a control region
+
+analysis:
+  method: "ABCD"
+  name: "ABCD_Closure_Test"
+  luminosity: 400.0  # fb^-1
+  output_json: "abcd_closure.json"
+  output_dir: "./results/"
+
+samples:
+  backgrounds:
+    - "Wjets"
+    - "Zjets" 
+    - "Gjets"
+    - "Top"
+    - "QCD"
+  signals:
+    - "gogoG"   # Signal for testing
+
+# ABCD closure test configuration
+abcd:
+  regions:
+    region_A: "Test_VeryHighMET_HighMass"  # Region to predict (closure test)
+    region_B: "CR_VeryHighMET_LowMass"     # Control region B
+    region_C: "CR_LowMET_HighMass"         # Control region C  
+    region_D: "CR_LowMET_LowMass"          # Control region D
+  predicted_region: "region_A"             # Predict the test region
+  formula: "(@0*@1/@2)"                    # A = B*C/D
+  generate_datacards: true                 # Generate datacards for closure test
+
+# Define all 4 regions for closure test
+bins:
+  Test_VeryHighMET_HighMass:    # Test region (predict this)
+    description: "Test Region - Very High MET, High Mass (for closure)"
+    cuts: 
+      - "nSelPhotons == 1"
+      - "met > 300"           # Very high MET
+      - "rjr_Mr[1] > 1000"
+      - "rjr_Rv[1] > 0.3"
+    
+  CR_VeryHighMET_LowMass:     # Control region B
+    description: "Control Region B - Very High MET, Low Mass" 
+    cuts:
+      - "nSelPhotons == 1" 
+      - "met > 300"           # Very high MET
+      - "rjr_Mr[1] < 500"
+      - "rjr_Rv[1] > 0.3"
+    
+  CR_LowMET_HighMass:     # Control region C
+    description: "Control Region C - Low MET, High Mass"
+    cuts:
+      - "nSelPhotons == 1"
+      - "met < 100"           # Low MET
+      - "rjr_Mr[1] > 1000" 
+      - "rjr_Rv[1] > 0.3"
+    
+  CR_LowMET_LowMass:      # Control region D
+    description: "Control Region D - Low MET, Low Mass"
+    cuts:
+      - "nSelPhotons == 1"
+      - "met < 100"           # Low MET
+      - "rjr_Mr[1] < 500"
+      - "rjr_Rv[1] > 0.3"
+
+# Systematics for closure test
+systematics:
+  experimental:
+    - name: "luminosity"
+      type: "lnN"
+      value: 1.025
+      bins: ["all"]
+      processes: ["all"]
+
+  abcd_systematics:
+    # Rate parameters for control regions
+    - name: "scale_control_B"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+      
+    - name: "scale_control_C"
+      type: "rateParam"
+      value: 1.0  
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+      
+    - name: "scale_control_D"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_3"] 
+      processes: ["backgrounds"]
+
+    # ABCD constraint for closure test
+    - name: "abcd_closure_constraint"
+      type: "rateParam"
+      formula: "auto"
+      bins: ["auto_predicted"]
+      processes: ["backgrounds"]
+
+  precision_systematics:
+    - name: "precision_control_B"
+      type: "lnN"
+      value: 1.01   # Moderate precision
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+      
+    - name: "precision_control_C" 
+      type: "lnN"
+      value: 1.15   # Medium precision
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+      
+    - name: "precision_control_D"
+      type: "lnN" 
+      value: 1.20   # Moderate precision
+      bins: ["auto_control_3"]
+      processes: ["backgrounds"]
+
+# Runtime options
+options:
+  verbosity: 2          # Detailed output for closure test
+  parallel: false
+  dry_run: false

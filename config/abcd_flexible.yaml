@@ -1,0 +1,138 @@
+# Flexible ABCD Configuration 
+# Example showing prediction of region D instead of A
+
+analysis:
+  method: "ABCD"
+  name: "ABCD_Flexible_Prediction"
+  luminosity: 400.0  # fb^-1
+  output_json: "abcd_flexible.json"
+  output_dir: "./results/"
+
+samples:
+  backgrounds:
+    - "Wjets"
+    - "Zjets" 
+    - "Gjets"
+    - "Top"
+    - "QCD"
+  signals:
+    - "gogoG"
+
+# Flexible ABCD - predict region D
+abcd:
+  regions:
+    region_A: "DataRich_HighMET_HighMass"   # Has data
+    region_B: "DataRich_HighMET_LowMass"    # Has data
+    region_C: "DataRich_LowMET_HighMass"    # Has data
+    region_D: "DataPoor_LowMET_LowMass"     # Predict this region
+  predicted_region: "region_D"              # D = A*B/C (flexible formula)
+  formula: "(@0*@1/@2)"                     # Uses A, B, C to predict D
+  generate_datacards: true                  # Generate datacards
+
+# Define all 4 regions
+bins:
+  DataRich_HighMET_HighMass:    # Region A (has data)
+    description: "Data Rich Region A - High MET, High Mass"
+    cuts: 
+      - "nSelPhotons == 1"
+      - "met > 200"
+      - "rjr_Mr[1] > 1000"
+      - "rjr_Rv[1] > 0.3"
+    
+  DataRich_HighMET_LowMass:     # Region B (has data)
+    description: "Data Rich Region B - High MET, Low Mass" 
+    cuts:
+      - "nSelPhotons == 1" 
+      - "met > 200"
+      - "rjr_Mr[1] < 500"
+      - "rjr_Rv[1] > 0.3"
+    
+  DataRich_LowMET_HighMass:     # Region C (has data)
+    description: "Data Rich Region C - Low MET, High Mass"
+    cuts:
+      - "nSelPhotons == 1"
+      - "met < 100"
+      - "rjr_Mr[1] > 1000" 
+      - "rjr_Rv[1] > 0.3"
+    
+  DataPoor_LowMET_LowMass:      # Region D (to be predicted)
+    description: "Data Poor Region D - Low MET, Low Mass (predicted)"
+    cuts:
+      - "nSelPhotons == 1"
+      - "met < 100"
+      - "rjr_Mr[1] < 500"
+      - "rjr_Rv[1] > 0.3"
+
+# Systematics configuration
+systematics:
+  experimental:
+    - name: "luminosity"
+      type: "lnN"
+      value: 1.025
+      bins: ["all"]
+      processes: ["all"]
+      
+    - name: "photon_efficiency"
+      type: "lnN"
+      value: 1.03
+      bins: ["all"]  # Apply to all regions
+      processes: ["backgrounds"]
+
+  abcd_systematics:
+    # Rate parameters for regions A, B, C (the control regions for D)
+    - name: "scale_DataRich_HighMET_HighMass"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_1"]  # Maps to region A
+      processes: ["backgrounds"]
+      
+    - name: "scale_DataRich_HighMET_LowMass"
+      type: "rateParam"
+      value: 1.0  
+      bins: ["auto_control_2"]  # Maps to region B
+      processes: ["backgrounds"]
+      
+    - name: "scale_DataRich_LowMET_HighMass"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_3"]  # Maps to region C
+      processes: ["backgrounds"]
+
+    # ABCD constraint: D = A*B/C
+    - name: "abcd_constraint_D"
+      type: "rateParam"
+      formula: "auto"  # Uses regions A, B, C to predict D
+      bins: ["auto_predicted"]  # Maps to region D
+      processes: ["backgrounds"]
+
+  precision_systematics:
+    - name: "precision_region_A"
+      type: "lnN"
+      value: 1.05   # Good precision
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+      
+    - name: "precision_region_B" 
+      type: "lnN"
+      value: 1.08   # Medium precision
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+      
+    - name: "precision_region_C"
+      type: "lnN" 
+      value: 1.12   # Lower precision
+      bins: ["auto_control_3"]
+      processes: ["backgrounds"]
+      
+    # Additional systematic for the predicted region
+    - name: "transfer_factor_uncertainty"
+      type: "lnN"
+      value: 1.15   # Uncertainty on ABCD method itself
+      bins: ["auto_predicted"]
+      processes: ["backgrounds"]
+
+# Runtime options
+options:
+  verbosity: 2
+  parallel: false
+  dry_run: false

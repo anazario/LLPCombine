@@ -12,15 +12,65 @@ struct BinConfig {
     std::vector<std::string> cuts;
 };
 
+// Forward declaration
+struct ABCDConfig;
+
 struct SystematicConfig {
     std::string name;
     std::string type;
     double value;
+    std::vector<std::string> bins;
     std::vector<std::string> processes;
+    std::string formula;
+    std::vector<std::string> parameters;
+    
+    // Method to resolve auto mappings based on ABCD config
+    std::vector<std::string> ResolveBins(const ABCDConfig& abcd) const;
+};
+
+struct ABCDConfig {
+    std::map<std::string, std::string> regions;  // region_A -> bin_name mapping
+    std::string predicted_region;                 // which region is predicted
+    std::string formula;                          // ABCD formula (default: "(@0*@1/@2)")
+    bool generate_datacards;                      // whether to generate CombineHarvester datacards
+    
+    // Helper methods
+    std::string GetPredictedBin() const {
+        if (regions.find(predicted_region) != regions.end()) {
+            return regions.at(predicted_region);
+        }
+        return "";
+    }
+    
+    std::vector<std::string> GetControlBins() const {
+        std::vector<std::string> controls;
+        for (const auto& region_pair : regions) {
+            if (region_pair.first != predicted_region) {
+                controls.push_back(region_pair.second);
+            }
+        }
+        return controls;
+    }
+    
+    std::vector<std::string> GetFormulaParameters() const {
+        std::vector<std::string> params;
+        for (const auto& region_pair : regions) {
+            if (region_pair.first != predicted_region) {
+                params.push_back("scale_" + region_pair.second);
+            }
+        }
+        return params;
+    }
+    
+    bool IsValid() const {
+        return regions.size() == 4 && !predicted_region.empty() && 
+               regions.find(predicted_region) != regions.end();
+    }
 };
 
 struct AnalysisConfig {
     std::string name;
+    std::string method;  // "standard" or "ABCD"
     double luminosity;
     std::string output_json;
     std::string output_dir;
@@ -30,6 +80,12 @@ struct AnalysisConfig {
     
     std::vector<BinConfig> bins;
     std::vector<SystematicConfig> systematics;
+    
+    // ABCD-specific configuration
+    ABCDConfig abcd;
+    std::vector<SystematicConfig> experimental_systematics;
+    std::vector<SystematicConfig> abcd_systematics;
+    std::vector<SystematicConfig> precision_systematics;
     
     // Runtime options
     int verbosity;
@@ -49,6 +105,7 @@ public:
     std::string GetCombinedCuts(const std::string& bin_name) const;
     void PrintConfig() const;
     bool ValidateConfig() const;
+    bool ValidateABCDConfig() const;
     
 private:
     AnalysisConfig config_;

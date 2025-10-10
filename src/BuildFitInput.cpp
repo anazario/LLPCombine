@@ -284,8 +284,8 @@ void BuildFitInput::ConstructBkgBinObjects( countmap countResults, summap sumRes
 void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
-		analysisbins[binname]->data.first = "data";
-		analysisbins[binname]->data.second = new Process("data");
+		analysisbins[binname]->totalData.first = "data";
+		analysisbins[binname]->totalData.second = new Process("data");
 		for( const auto& it2: countResults){
 
 			proc_cut_pair cutpairkey = it2.first;
@@ -295,7 +295,7 @@ void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResult
 			std::cout << "procname " << procname << " binname " << binname2 << endl;	
 			Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
 			//analysisbins[binname]->data.insert({procname, thisproc} );
-			analysisbins[binname]->data.second->Add(thisproc);
+			analysisbins[binname]->totalData.second->Add(thisproc);
 		}
 	}
 }
@@ -328,7 +328,7 @@ void BuildFitInput::PrintBins(int verbosity){
 				std::cout<<"   "<< it2.second->procname<<" "<<it2.second->nevents <<" "<<it2.second->wnevents<<" "<<it2.second->staterror<<"\n";
 			}
 			//data - if specified	
-			if(it.second->data.second != nullptr) std::cout<<"   "<< it.second->data.second->procname<<" "<<it.second->data.second->nevents <<" "<<it.second->data.second->wnevents<<" "<<it.second->data.second->staterror<<"\n";
+			if(it.second->totalData.second != nullptr) std::cout<<"   "<< it.second->totalData.second->procname<<" "<<it.second->totalData.second->nevents <<" "<<it.second->totalData.second->wnevents<<" "<<it.second->totalData.second->staterror<<"\n";
 		}
 		if(verbosity >= 1){
 			for(const auto& it2: it.second->signals){

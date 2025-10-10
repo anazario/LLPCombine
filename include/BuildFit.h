@@ -4,6 +4,7 @@
 
 #include "JSONFactory.h"
 #include "BuildFitTools.h"
+#include "ConfigParser.h"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -35,7 +36,11 @@ class BuildFit{
 	std::vector<std::string> GetBinSet( JSONFactory* j);
        
 	void BuildAsimovFit(JSONFactory* j, std::string signaPoint, std::string datacard_dir);
+	void BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string datacard_dir, const AnalysisConfig& config);
 	
+	// Helper methods for ABCD implementation
+	void ApplySystematics(const std::vector<SystematicConfig>& systematics, const ABCDConfig& abcd);
+	std::string JoinStrings(const std::vector<std::string>& strings, const std::string& delimiter);
 	
 	std::vector<std::string> sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
 	

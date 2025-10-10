@@ -112,13 +112,6 @@ private:
         for (const std::string& line_raw : lines) {
             std::string line = line_raw;
             
-            // Check indentation level BEFORE trimming
-            size_t indent = 0;
-            for (char c : line) {
-                if (c == ' ') indent++;
-                else break;
-            }
-            
             // Remove comments and trim whitespace
             size_t comment_pos = line.find('#');
             if (comment_pos != std::string::npos) {
@@ -298,9 +291,36 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     if (parser.values.count("analysis.output_dir")) {
         config_.output_dir = parser.values["analysis.output_dir"];
     }
+    if (parser.values.count("analysis.method")) {
+        config_.method = parser.values["analysis.method"];
+    }
     
-    
-    
+    // Parse ABCD configuration if method is ABCD
+    if (config_.method == "ABCD") {
+        // Parse ABCD regions
+        for (const auto& pair : parser.values) {
+            if (pair.first.find("abcd.regions.") == 0) {
+                std::string region_name = pair.first.substr(13); // Remove "abcd.regions."
+                config_.abcd.regions[region_name] = pair.second;
+            }
+        }
+        
+        if (parser.values.count("abcd.predicted_region")) {
+            config_.abcd.predicted_region = parser.values["abcd.predicted_region"];
+        }
+        
+        if (parser.values.count("abcd.formula")) {
+            config_.abcd.formula = parser.values["abcd.formula"];
+        } else {
+            config_.abcd.formula = "(@0*@1/@2)";  // Default ABCD formula
+        }
+        
+        if (parser.values.count("abcd.generate_datacards")) {
+            config_.abcd.generate_datacards = (parser.values["abcd.generate_datacards"] == "true");
+        } else {
+            config_.abcd.generate_datacards = true;  // Default: generate datacards for ABCD
+        }
+    }
     
     // Parse samples
     if (parser.lists.count("samples.backgrounds")) {
@@ -422,5 +442,65 @@ bool ConfigParser::ValidateConfig() const {
         return false;
     }
     
+    // ABCD-specific validation
+    if (config_.method == "ABCD") {
+        return ValidateABCDConfig();
+    }
+    
     return true;
+}
+
+bool ConfigParser::ValidateABCDConfig() const {
+    if (!config_.abcd.IsValid()) {
+        std::cerr << "Error: Invalid ABCD configuration" << std::endl;
+        return false;
+    }
+    
+    // Check that all ABCD regions are defined as bins
+    for (const auto& region_pair : config_.abcd.regions) {
+        const std::string& region_name = region_pair.first;
+        const std::string& bin_name = region_pair.second;
+        bool found = false;
+        for (const auto& bin : config_.bins) {
+            if (bin.name == bin_name) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            std::cerr << "Error: ABCD region '" << region_name << "' references undefined bin '" << bin_name << "'" << std::endl;
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Implementation of SystematicConfig::ResolveBins
+std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) const {
+    std::vector<std::string> resolved_bins;
+    
+    for (const std::string& bin : bins) {
+        if (bin == "auto_predicted") {
+            resolved_bins.push_back(abcd.GetPredictedBin());
+        } else if (bin == "auto_control_1") {
+            auto controls = abcd.GetControlBins();
+            if (controls.size() >= 1) resolved_bins.push_back(controls[0]);
+        } else if (bin == "auto_control_2") {
+            auto controls = abcd.GetControlBins();
+            if (controls.size() >= 2) resolved_bins.push_back(controls[1]);
+        } else if (bin == "auto_control_3") {
+            auto controls = abcd.GetControlBins();
+            if (controls.size() >= 3) resolved_bins.push_back(controls[2]);
+        } else if (bin == "all") {
+            // Add all ABCD bins
+            for (const auto& region_pair : abcd.regions) {
+                resolved_bins.push_back(region_pair.second);
+            }
+        } else {
+            resolved_bins.push_back(bin);  // Literal bin name
+        }
+    }
+    
+    return resolved_bins;
 }
