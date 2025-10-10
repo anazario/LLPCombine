@@ -6,6 +6,9 @@
 #include <map>
 #include <memory>
 
+// Forward declarations
+class SimpleYAMLParser;
+
 struct BinConfig {
     std::string name;
     std::string description;
