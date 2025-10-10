@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <errno.h>
+#include <algorithm>  // for std::find
 
 using std::string;
 
@@ -71,6 +72,39 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	ST->LoadBkgs(bkglist);
 	ST->LoadSigs(siglist);
 	ST->LoadData(datalist);
+	
+	// Filter signal points if specified in configuration
+	if (!config.signal_points.empty()) {
+		if (verbosity > 0) {
+			std::cout << "Filtering to " << config.signal_points.size() << " specific signal points..." << std::endl;
+		}
+		
+		// Filter SignalKeys to only include specified signal points
+		stringlist filtered_signal_keys;
+		for (const auto& point : config.signal_points) {
+			// Check if this signal point exists in the loaded signal keys
+			if (std::find(ST->SignalKeys.begin(), ST->SignalKeys.end(), point) != ST->SignalKeys.end()) {
+				filtered_signal_keys.push_back(point);
+				if (verbosity > 1) {
+					std::cout << "  Including signal point: " << point << std::endl;
+				}
+			} else {
+				std::cerr << "Warning: Signal point '" << point << "' not found in loaded signals" << std::endl;
+			}
+		}
+		
+		if (filtered_signal_keys.empty()) {
+			std::cerr << "Error: None of the specified signal points were found in the loaded signals" << std::endl;
+			return 1;
+		}
+		
+		// Replace the signal keys with filtered list
+		ST->SignalKeys = filtered_signal_keys;
+		
+		if (verbosity > 0) {
+			std::cout << "Using " << ST->SignalKeys.size() << " filtered signal points" << std::endl;
+		}
+	}
 	
 	if (verbosity > 1 && !options.batch_mode) {
 		ST->PrintDict(ST->BkgDict);
