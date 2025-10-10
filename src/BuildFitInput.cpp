@@ -49,10 +49,9 @@ cout << "subkey " << subkey << endl;
 		configTree->SetBranchAddress("sumEvtWgt", &sumEvtWgt);
 		configTree->SetBranchAddress("sCrossSection", &xsec);
 		configTree->GetEntry(0);
-		//TODO - will need to update for data when sumEvtWgts are correct
 		//for now just look at raw number of events for data
 		double wt{};
-		wt = xsec*1000./sumEvtWgt;
+		wt = 1.0;
 		//save the weight for error propagation later
 		data_evtwt[subkey] = wt;
 		auto tempdf = df.Define("evtwt", std::to_string(wt));

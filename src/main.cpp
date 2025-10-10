@@ -81,7 +81,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	
 	// Initialize BuildFitInput
 	BuildFitInput* BFI = new BuildFitInput();
-	BFI->LoadData_byMap(ST->DataDict, luminosity);
+	BFI->LoadData_byMap(ST->DataDict);  // Data is NOT scaled by luminosity!
 	BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
 	BFI->LoadSig_byMap(ST->SigDict, luminosity);
 	
