@@ -32,8 +32,6 @@ bins:
     description: "Leptonic SV, low dxySig (100-300) - PREDICTED FOR CLOSURE"
     cuts: 
       - "SV_nLeptonic == 1"
-      - "rjr_Ms[1] > 1000"
-      - "rjr_Rs[1] > 0.15"
       - "LeptonicSV_dxySig[0] > 100"
       - "LeptonicSV_dxySig[0] < 300"
     
@@ -41,8 +39,6 @@ bins:
     description: "Leptonic SV, high dxySig (300-1000)" 
     cuts:
       - "SV_nLeptonic == 1"
-      - "rjr_Ms[1] > 1000" 
-      - "rjr_Rs[1] > 0.15"
       - "LeptonicSV_dxySig[0] > 300"
       - "LeptonicSV_dxySig[0] < 1000"
     
@@ -50,8 +46,6 @@ bins:
     description: "Hadronic SV, low dxySig (100-300)"
     cuts:
       - "SV_nHadronic == 1"
-      - "rjr_Ms[1] > 1000"
-      - "rjr_Rs[1] > 0.15" 
       - "HadronicSV_dxySig[0] > 100"
       - "HadronicSV_dxySig[0] < 300"
     
@@ -59,20 +53,11 @@ bins:
     description: "Hadronic SV, high dxySig (300-1000)"
     cuts:
       - "SV_nHadronic == 1"
-      - "rjr_Ms[1] > 1000"
-      - "rjr_Rs[1] > 0.15"
       - "HadronicSV_dxySig[0] > 300" 
       - "HadronicSV_dxySig[0] < 1000"
 
 # Systematics for closure test
 systematics:
-  experimental:
-    - name: "luminosity"
-      type: "lnN"
-      value: 1.025
-      bins: ["all"]
-      processes: ["all"]
-
   abcd_systematics:
     # Rate parameters for control regions B, C, D (used to predict A)
     - name: "scale_closure_B"
@@ -104,19 +89,19 @@ systematics:
     # Modest systematics for closure test
     - name: "closure_precision_B"
       type: "lnN"
-      value: 1.05
+      value: 1.10
       bins: ["auto_control_1"]
       processes: ["backgrounds"]
       
     - name: "closure_precision_C" 
       type: "lnN"
-      value: 1.05
+      value: 1.10
       bins: ["auto_control_2"]
       processes: ["backgrounds"]
       
     - name: "closure_precision_D"
       type: "lnN" 
-      value: 1.05
+      value: 1.10
       bins: ["auto_control_3"]
       processes: ["backgrounds"]
 

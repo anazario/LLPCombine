@@ -107,10 +107,10 @@ SampleTool::SampleTool(){
 
 	//data skims
 	//need new data skim
-	pathPrefix = pathPrefix+"rjrskims_v37/";
-	MasterDict["DisplacedJet18"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D-15Feb2022_UL2018-v1_v29_rjrskim_v37.root"};
-	MasterDict["DisplacedJet17"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D-15Feb2022_UL2018-v1_v29_rjrskim_v37.root"};
-
+	//pathPrefix = pathPrefix+"rjrskims_v37/";
+	//MasterDict["DisplacedJet18"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D-15Feb2022_UL2018-v1_v29_rjrskim_v37.root"};
+	//MasterDict["DisplacedJet17"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D-15Feb2022_UL2018-v1_v29_rjrskim_v37.root"};
+	MasterDict["DisplacedJet18"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D_rjrskim_v38.root"};
 
 }
 void SampleTool::LoadBkgs( stringlist& bkglist ){
