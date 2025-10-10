@@ -1,0 +1,9 @@
+# Batch configuration list for LLPCombine
+# Lines starting with # are comments
+
+# First batch of configs
+config/analysis_batch_1.yaml
+config/analysis_batch_2.yaml
+
+# Include the original test config too
+config/test_anchors.yaml

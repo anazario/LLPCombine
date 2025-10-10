@@ -1,0 +1,15 @@
+analysis:
+  name: "Batch_Test_2"
+  luminosity: 500.0
+  output_json: "batch_test_2.json"
+
+samples:
+  backgrounds: ["Wjets", "Gjets"]
+  signals: ["gogoZ"]
+
+bins:
+  test_bin_2:
+    description: "Second batch test bin"
+    cuts:
+      - "nSelPhotons == 2"
+      - "rjr_Mr[1] > 1500"

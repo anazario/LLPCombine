@@ -1,0 +1,20 @@
+analysis:
+  name: "test"
+  luminosity: 400.0
+  output_json: "test.json"
+
+# Simple anchor test
+test_anchor: &my_cuts
+  - "cut1 > 100"
+  - "cut2 < 50"
+
+samples:
+  backgrounds: ["Wjets"]
+  signals: ["gogoG"]
+
+bins:
+  test_bin:
+    description: "Test bin with anchors"
+    cuts:
+      - "nSelPhotons == 1"
+      - *my_cuts

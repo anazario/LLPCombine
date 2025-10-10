@@ -91,6 +91,8 @@ SampleTool::SampleTool(){
 				pathPrefix+"SMS_SVIPM100_v30_gogoZ_AODSIM_mGl-2000_mN2-400_mN1-350_ct0p001_rjrskim_v37.root",
 				pathPrefix+"SMS_SVIPM100_v30_gogoZ_AODSIM_mGl-2000_mN2-400_mN1-350_ct0p1_rjrskim_v37.root",
 				pathPrefix+"SMS_SVIPM100_v30_gogoZ_AODSIM_mGl-2000_mN2-400_mN1-350_ct0p3_rjrskim_v37.root"};
+
+	MasterDict["gogoZTest"] = {pathPrefix+"SMS_SVIPM100_v30_gogoZ_AODSIM_mGl-2000_mN2-400_mN1-200_ct0p1_rjrskim_v37.root"};
 	
 				   
 	MasterDict["sqsqG"] = { pathPrefix+"SMS_SVIPM100_v30_sqsqG_AODSIM_mGl-1700_mN2-1500_mN1-100_ct0p1_rjrskim_v37.root",
@@ -168,6 +170,9 @@ SampleTool::SampleTool(){
 
 }
 void SampleTool::LoadBkgs( stringlist& bkglist ){
+	// Clear any existing background dictionary
+	BkgDict.clear();
+	
 	for( long unsigned int i=0; i<bkglist.size(); i++){
 		//check if background exists
 		if( MasterDict.count(bkglist[i]) == 0 ){
@@ -178,6 +183,9 @@ void SampleTool::LoadBkgs( stringlist& bkglist ){
 	}
 }
 void SampleTool::LoadSigs( stringlist& siglist ){
+	// Clear any existing signal dictionary and keys
+	SigDict.clear();
+	SignalKeys.clear();
 
 	for( long unsigned int i=0; i<siglist.size(); i++){
 		if( MasterDict.count(siglist[i]) == 0 ){
