@@ -210,10 +210,7 @@ errormap BuildFitInput::ComputeStatError( countmap countResults, map< std::strin
         // Access key and values from both maps
         ROOT::RDF::RResultPtr<long long unsigned int> count_result = it.second;
         double count = (double) *count_result;
-		std::cout << "DEBUG: Looking up weight for key: '" << it.first.first << "'" << std::endl;
-		std::cout << "DEBUG: Weight found: " << evtwt[it.first.first] << std::endl;
 		double err = evtwt[it.first.first] * std::sqrt( count );
-		std::cout << "DEBUG: Count=" << count << " Weight=" << evtwt[it.first.first] << " Error=" << err << std::endl;
 		errorResults[std::make_pair( it.first.first, it.first.second)] = err;
     }
     return errorResults;
@@ -299,6 +296,7 @@ void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResult
 			//analysisbins[binname]->data.insert({procname, thisproc} );
 			analysisbins[binname]->totalData.second->Add(thisproc);
 		}
+		analysisbins[binname]->totalData.second->FixError();
 	}
 }
 void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
