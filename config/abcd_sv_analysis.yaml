@@ -1,0 +1,137 @@
+# ABCD Configuration for SV Objects Analysis
+# Based on leptonic/hadronic SV classification and dxySig ranges
+
+analysis:
+  method: "ABCD"
+  name: "SV_ABCD_Analysis"
+  luminosity: 30.0  # fb^-1 (as specified in hardcoded version)
+  output_json: "sv_abcd_analysis.json"
+  output_dir: "./results/"
+
+samples:
+  backgrounds: []  # Empty background list as in hardcoded version
+  signals:
+    - "gogoZ"  # Only gogoZ signal as specified
+  data:
+    - "DisplacedJet18"  # 2018 displaced jet data
+
+# ABCD regions for SV analysis
+# A: Leptonic SV, low dxySig (100-300)
+# B: Leptonic SV, high dxySig (300-1000) 
+# C: Hadronic SV, low dxySig (100-300)
+# D: Hadronic SV, high dxySig (300-1000) - this will be predicted
+abcd:
+  regions:
+    region_A: "G1CRA"    # Leptonic, low dxySig
+    region_B: "G1CRB"    # Leptonic, high dxySig  
+    region_C: "G1CRC"    # Hadronic, low dxySig
+    region_D: "G1CRD"    # Hadronic, high dxySig (predicted)
+  predicted_region: "region_D"
+  formula: "(@0*@1/@2)"              # D = A*B/C
+  generate_datacards: true
+
+# Define all 4 ABCD regions
+bins:
+  G1CRA:    # Region A - Leptonic SV, low dxySig
+    description: "Leptonic SV, low dxySig (100-300)"
+    cuts: 
+      - "SV_nLeptonic == 1"
+      - "rjr_Ms[1] > 1000"
+      - "rjr_Rs[1] > 0.15"
+      - "LeptonicSV_dxySig[0] > 100"
+      - "LeptonicSV_dxySig[0] < 300"
+    
+  G1CRB:    # Region B - Leptonic SV, high dxySig
+    description: "Leptonic SV, high dxySig (300-1000)" 
+    cuts:
+      - "SV_nLeptonic == 1"
+      - "rjr_Ms[1] > 1000" 
+      - "rjr_Rs[1] > 0.15"
+      - "LeptonicSV_dxySig[0] > 300"
+      - "LeptonicSV_dxySig[0] < 1000"
+    
+  G1CRC:    # Region C - Hadronic SV, low dxySig
+    description: "Hadronic SV, low dxySig (100-300)"
+    cuts:
+      - "SV_nHadronic == 1"
+      - "rjr_Ms[1] > 1000"
+      - "rjr_Rs[1] > 0.15" 
+      - "HadronicSV_dxySig[0] > 100"
+      - "HadronicSV_dxySig[0] < 300"
+    
+  G1CRD:    # Region D - Hadronic SV, high dxySig (predicted)
+    description: "Hadronic SV, high dxySig (300-1000) - PREDICTED"
+    cuts:
+      - "SV_nHadronic == 1"
+      - "rjr_Ms[1] > 1000"
+      - "rjr_Rs[1] > 0.15"
+      - "HadronicSV_dxySig[0] > 300" 
+      - "HadronicSV_dxySig[0] < 1000"
+
+# Systematics configuration
+systematics:
+  experimental:
+    - name: "luminosity"
+      type: "lnN"
+      value: 1.025
+      bins: ["all"]
+      processes: ["all"]
+      
+    - name: "sv_reconstruction"
+      type: "lnN"
+      value: 1.05
+      bins: ["all"]
+      processes: ["backgrounds", "signals"]
+
+  abcd_systematics:
+    # Rate parameters for control regions A, B, C
+    - name: "scale_G1CRA"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_1"]  # Region A
+      processes: ["backgrounds"]
+      
+    - name: "scale_G1CRB"
+      type: "rateParam"
+      value: 1.0  
+      bins: ["auto_control_2"]  # Region B
+      processes: ["backgrounds"]
+      
+    - name: "scale_G1CRC"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_3"]  # Region C
+      processes: ["backgrounds"]
+
+    # ABCD constraint: D = A*B/C
+    - name: "abcd_constraint_G1CRD"
+      type: "rateParam"
+      formula: "auto"
+      bins: ["auto_predicted"]  # Region D
+      processes: ["backgrounds"]
+
+  precision_systematics:
+    # 10% log-normal systematic for regions B, C, D as specified
+    - name: "region_B_precision"
+      type: "lnN"
+      value: 1.10
+      bins: ["G1CRB"]
+      processes: ["backgrounds"]
+      
+    - name: "region_C_precision" 
+      type: "lnN"
+      value: 1.10
+      bins: ["G1CRC"]
+      processes: ["backgrounds"]
+      
+    - name: "region_D_precision"
+      type: "lnN" 
+      value: 1.10
+      bins: ["G1CRD"]
+      processes: ["backgrounds"]
+
+# Runtime options
+options:
+  verbosity: 2
+  parallel: false
+  dry_run: false
