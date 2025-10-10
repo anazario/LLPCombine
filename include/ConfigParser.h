@@ -107,6 +107,7 @@ public:
     void PrintConfig() const;
     bool ValidateConfig() const;
     bool ValidateABCDConfig() const;
+    void ParseSystematics(const SimpleYAMLParser& parser);
     
 private:
     AnalysisConfig config_;

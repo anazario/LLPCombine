@@ -335,6 +335,9 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
         config_.signal_points = parser.lists["samples.signal_points"];
     }
     
+    // Parse systematics
+    ParseSystematics(parser);
+    
     // Parse bins
     for (const auto& pair : parser.lists) {
         if (pair.first.find("bins.") == 0) {
@@ -518,4 +521,10 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
     }
     
     return resolved_bins;
+}
+
+void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
+    // This is a placeholder - systematics parsing would be complex
+    // For now, just indicate that this method exists but isn't implemented
+    std::cout << "DEBUG: ParseSystematics called - not yet implemented" << std::endl;
 }
