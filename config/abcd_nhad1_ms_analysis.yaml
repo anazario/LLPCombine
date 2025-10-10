@@ -21,47 +21,47 @@ samples:
 # ABCD regions with nHad==1, Ms and dxySig binning
 abcd:
   regions:
-    region_A: "nHad1_MsLow_dxySigLow"     # Ms low, dxySig low (TO BE PREDICTED)
-    region_B: "nHad1_MsLow_dxySigHigh"    # Ms low, dxySig high
-    region_C: "nHad1_MsHigh_dxySigLow"    # Ms high, dxySig low
-    region_D: "nHad1_MsHigh_dxySigHigh"   # Ms high, dxySig high
+    region_A: "nHad1_MsHigh_dxySigLow"    # Ms high, dxySig low (TO BE PREDICTED)
+    region_B: "nHad1_MsHigh_dxySigHigh"   # Ms high, dxySig high
+    region_C: "nHad1_MsLow_dxySigLow"     # Ms low, dxySig low
+    region_D: "nHad1_MsLow_dxySigHigh"    # Ms low, dxySig high
   predicted_region: "region_A"        # Predict A using B*C/D
   formula: "(@0*@1/@2)"              # A = B*C/D
   generate_datacards: true
 
 # Define all 4 ABCD regions with nHad==1
 bins:
-  nHad1_MsLow_dxySigLow:    # Region A - Ms low, dxySig low (TO BE PREDICTED)
-    description: "nHad==1, Ms low (1000-2000), dxySig low (100-300) - PREDICTED"
+  nHad1_MsHigh_dxySigLow:    # Region A - Ms high, dxySig low (TO BE PREDICTED)
+    description: "nHad==1, Ms high (2000+), dxySig low (100-300) - PREDICTED"
     cuts: 
       - "SV_nHadronic == 1"
-      - "rjr_Ms[1] > 1000"
-      - "rjr_Ms[1] < 2000"
+      - "rjr_Ms[1] > 2000"
       - "HadronicSV_dxySig[0] > 100"
       - "HadronicSV_dxySig[0] < 300"
     
-  nHad1_MsLow_dxySigHigh:    # Region B - Ms low, dxySig high
-    description: "nHad==1, Ms low (1000-2000), dxySig high (300-1000)" 
+  nHad1_MsHigh_dxySigHigh:    # Region B - Ms high, dxySig high
+    description: "nHad==1, Ms high (2000+), dxySig high (300-1000)" 
     cuts:
       - "SV_nHadronic == 1"
-      - "rjr_Ms[1] > 1000"
-      - "rjr_Ms[1] < 2000"
+      - "rjr_Ms[1] > 2000"
       - "HadronicSV_dxySig[0] > 300"
       - "HadronicSV_dxySig[0] < 1000"
     
-  nHad1_MsHigh_dxySigLow:    # Region C - Ms high, dxySig low
-    description: "nHad==1, Ms high (2000+), dxySig low (100-300)"
+  nHad1_MsLow_dxySigLow:    # Region C - Ms low, dxySig low
+    description: "nHad==1, Ms low (1000-2000), dxySig low (100-300)"
     cuts:
       - "SV_nHadronic == 1"
-      - "rjr_Ms[1] > 2000"
+      - "rjr_Ms[1] > 1000"
+      - "rjr_Ms[1] < 2000"
       - "HadronicSV_dxySig[0] > 100"
       - "HadronicSV_dxySig[0] < 300"
     
-  nHad1_MsHigh_dxySigHigh:    # Region D - Ms high, dxySig high
-    description: "nHad==1, Ms high (2000+), dxySig high (300-1000)"
+  nHad1_MsLow_dxySigHigh:    # Region D - Ms low, dxySig high
+    description: "nHad==1, Ms low (1000-2000), dxySig high (300-1000)"
     cuts:
       - "SV_nHadronic == 1"
-      - "rjr_Ms[1] > 2000"
+      - "rjr_Ms[1] > 1000"
+      - "rjr_Ms[1] < 2000"
       - "HadronicSV_dxySig[0] > 300" 
       - "HadronicSV_dxySig[0] < 1000"
 
