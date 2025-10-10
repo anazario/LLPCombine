@@ -33,7 +33,8 @@ bool IsABCDMethod(const std::string& json_file) {
         JSONFactory j(json_file);
         // Check if JSON contains ABCD-specific metadata or bin names
         // This is a simple heuristic - we could make this more robust
-        std::vector<std::string> bins = j.GetBinSet();
+        BuildFit bf;
+        std::vector<std::string> bins = bf.GetBinSet(&j);
         
         // Look for typical ABCD region patterns
         int region_count = 0;
