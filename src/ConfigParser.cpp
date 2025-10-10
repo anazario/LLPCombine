@@ -451,6 +451,13 @@ bool ConfigParser::ValidateConfig() const {
 }
 
 bool ConfigParser::ValidateABCDConfig() const {
+    // Debug output
+    std::cerr << "DEBUG: ABCD regions count: " << config_.abcd.regions.size() << std::endl;
+    std::cerr << "DEBUG: Predicted region: '" << config_.abcd.predicted_region << "'" << std::endl;
+    for (const auto& region_pair : config_.abcd.regions) {
+        std::cerr << "DEBUG: Region " << region_pair.first << " -> " << region_pair.second << std::endl;
+    }
+    
     if (!config_.abcd.IsValid()) {
         std::cerr << "Error: Invalid ABCD configuration" << std::endl;
         return false;
