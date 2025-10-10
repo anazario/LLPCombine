@@ -81,7 +81,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	
 	// Initialize BuildFitInput
 	BuildFitInput* BFI = new BuildFitInput();
-	BFI->LoadData_byMap(ST->DataDict);  // Data is NOT scaled by luminosity!
+	BFI->LoadData_byMap(ST->DataDict, luminosity);
 	BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
 	BFI->LoadSig_byMap(ST->SigDict, luminosity);
 	
@@ -129,7 +129,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	}
 	
 	// Write output JSON
-	std::string output_path = output_dir + "/" + config.output_json;
+	std::string output_path = output_dir + config.output_json;
 	JSONFactory* json = new JSONFactory(BFI->analysisbins);
 	json->WriteJSON(output_path);
 	

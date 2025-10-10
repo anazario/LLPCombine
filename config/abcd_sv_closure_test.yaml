@@ -6,7 +6,7 @@ analysis:
   name: "SV_ABCD_Closure_Test"
   luminosity: 30.0  # fb^-1
   output_json: "sv_abcd_closure.json"
-  output_dir: "./results/"
+  output_dir: "./json/"
 
 samples:
   backgrounds: []  # Empty background list for closure test
@@ -18,38 +18,38 @@ samples:
 # ABCD closure test - predict region A using B, C, D
 abcd:
   regions:
-    region_A: "G1CRA"    # Leptonic, low dxySig (TO BE PREDICTED)
-    region_B: "G1CRB"    # Leptonic, high dxySig  
-    region_C: "G1CRC"    # Hadronic, low dxySig
-    region_D: "G1CRD"    # Hadronic, high dxySig
+    region_A: "nLep1CRA"    # Leptonic, low dxySig (TO BE PREDICTED)
+    region_B: "nLep1CRB"    # Leptonic, high dxySig  
+    region_C: "nHad1CRC"    # Hadronic, low dxySig
+    region_D: "nHad1CRD"    # Hadronic, high dxySig
   predicted_region: "region_A"        # Predict A for closure test
   formula: "(@0*@1/@2)"              # A = B*C/D
   generate_datacards: true
 
 # Define all 4 ABCD regions (same as main analysis)
 bins:
-  G1CRA:    # Region A - Leptonic SV, low dxySig (TO BE PREDICTED)
+  nLep1CRA:    # Region A - Leptonic SV, low dxySig (TO BE PREDICTED)
     description: "Leptonic SV, low dxySig (100-300) - PREDICTED FOR CLOSURE"
     cuts: 
       - "SV_nLeptonic == 1"
       - "LeptonicSV_dxySig[0] > 100"
       - "LeptonicSV_dxySig[0] < 300"
     
-  G1CRB:    # Region B - Leptonic SV, high dxySig
+  nLep1CRB:    # Region B - Leptonic SV, high dxySig
     description: "Leptonic SV, high dxySig (300-1000)" 
     cuts:
       - "SV_nLeptonic == 1"
       - "LeptonicSV_dxySig[0] > 300"
       - "LeptonicSV_dxySig[0] < 1000"
     
-  G1CRC:    # Region C - Hadronic SV, low dxySig
+  nHad1CRC:    # Region C - Hadronic SV, low dxySig
     description: "Hadronic SV, low dxySig (100-300)"
     cuts:
       - "SV_nHadronic == 1"
       - "HadronicSV_dxySig[0] > 100"
       - "HadronicSV_dxySig[0] < 300"
     
-  G1CRD:    # Region D - Hadronic SV, high dxySig
+  nHad1CRD:    # Region D - Hadronic SV, high dxySig
     description: "Hadronic SV, high dxySig (300-1000)"
     cuts:
       - "SV_nHadronic == 1"
