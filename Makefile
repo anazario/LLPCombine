@@ -22,7 +22,7 @@ INC_DIR = include
 OBJS_DIR = obj
 BIN_DIR = .
 CPP_SRCS = $(SRC_DIR)/main.cpp $(SRC_DIR)/SampleTool.cpp $(SRC_DIR)/BuildFitInput.cpp $(SRC_DIR)/JSONFactory.cpp $(SRC_DIR)/ConfigParser.cpp $(SRC_DIR)/ArgumentParser.cpp
-CMSSW_CPP_SRCS = $(SRC_DIR)/BFmain.cpp $(SRC_DIR)/BuildFit.cpp $(SRC_DIR)/JSONFactory.cpp
+CMSSW_CPP_SRCS = $(SRC_DIR)/BFmain.cpp $(SRC_DIR)/BuildFit.cpp $(SRC_DIR)/JSONFactory.cpp $(SRC_DIR)/ConfigParser.cpp
 OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJS_DIR)/%.o,$(CPP_SRCS))
 CMSSWOBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJS_DIR)/%.o,$(CMSSW_CPP_SRCS))
 
