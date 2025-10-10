@@ -524,7 +524,72 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
 }
 
 void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
-    // This is a placeholder - systematics parsing would be complex
-    // For now, just indicate that this method exists but isn't implemented
-    std::cout << "DEBUG: ParseSystematics called - not yet implemented" << std::endl;
+    std::cout << "DEBUG: ParseSystematics called - implementing..." << std::endl;
+    
+    // Parse ABCD systematics
+    ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
+    
+    // Parse precision systematics  
+    ParseSystematicCategory(parser, "systematics.precision_systematics", config_.precision_systematics);
+    
+    // Parse experimental systematics
+    ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
+    
+    std::cout << "DEBUG: Parsed " << config_.abcd_systematics.size() << " ABCD systematics" << std::endl;
+    std::cout << "DEBUG: Parsed " << config_.precision_systematics.size() << " precision systematics" << std::endl;
+    std::cout << "DEBUG: Parsed " << config_.experimental_systematics.size() << " experimental systematics" << std::endl;
+}
+
+void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
+    // Look for keys that start with the category prefix followed by an index
+    // e.g., "systematics.abcd_systematics.0.name", "systematics.abcd_systematics.0.type", etc.
+    
+    std::map<int, SystematicConfig> indexed_systematics;
+    
+    for (const auto& pair : parser.values) {
+        if (pair.first.find(category_prefix + ".") == 0) {
+            // Extract the index and property name
+            std::string remainder = pair.first.substr(category_prefix.length() + 1);
+            size_t dot_pos = remainder.find('.');
+            if (dot_pos == std::string::npos) continue;
+            
+            int index = std::stoi(remainder.substr(0, dot_pos));
+            std::string property = remainder.substr(dot_pos + 1);
+            
+            if (property == "name") {
+                indexed_systematics[index].name = pair.second;
+            } else if (property == "type") {
+                indexed_systematics[index].type = pair.second;
+            } else if (property == "value") {
+                indexed_systematics[index].value = std::stod(pair.second);
+            } else if (property == "formula") {
+                indexed_systematics[index].formula = pair.second;
+            }
+        }
+    }
+    
+    // Parse lists (bins, processes, parameters)
+    for (const auto& pair : parser.lists) {
+        if (pair.first.find(category_prefix + ".") == 0) {
+            std::string remainder = pair.first.substr(category_prefix.length() + 1);
+            size_t dot_pos = remainder.find('.');
+            if (dot_pos == std::string::npos) continue;
+            
+            int index = std::stoi(remainder.substr(0, dot_pos));
+            std::string property = remainder.substr(dot_pos + 1);
+            
+            if (property == "bins") {
+                indexed_systematics[index].bins = pair.second;
+            } else if (property == "processes") {
+                indexed_systematics[index].processes = pair.second;
+            } else if (property == "parameters") {
+                indexed_systematics[index].parameters = pair.second;
+            }
+        }
+    }
+    
+    // Convert indexed map to vector
+    for (const auto& pair : indexed_systematics) {
+        systematics.push_back(pair.second);
+    }
 }
