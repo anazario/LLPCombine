@@ -167,36 +167,43 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     });
     
     // Apply systematics from configuration with auto-resolution
-    std::cout << "DEBUG: Applying systematics..." << std::endl;
-    std::cout << "  Experimental systematics: " << config.experimental_systematics.size() << std::endl;
-    std::cout << "  ABCD systematics: " << config.abcd_systematics.size() << std::endl;
-    std::cout << "  Precision systematics: " << config.precision_systematics.size() << std::endl;
     
     ApplySystematics(config.experimental_systematics, config.abcd);
     ApplySystematics(config.abcd_systematics, config.abcd);  
     ApplySystematics(config.precision_systematics, config.abcd);
     
+    cb.PrintAll();
     cb.WriteDatacard(datacard_dir + "/" + signalPoint + "/" + signalPoint + ".txt");
 }
 
 void BuildFit::ApplySystematics(const std::vector<SystematicConfig>& systematics, const ABCDConfig& abcd) {
+    std::string predicted_bin = abcd.GetPredictedBin();
+    std::vector<std::string> control_bins = abcd.GetControlBins();
+    
     for (const auto& syst : systematics) {
         // Resolve auto mappings
         std::vector<std::string> resolved_bins = syst.ResolveBins(abcd);
         
         if (resolved_bins.empty()) continue;
         
-        std::cout << "Applying systematic: " << syst.name << " to bins: ";
-        for (const auto& bin : resolved_bins) std::cout << bin << " ";
-        std::cout << std::endl;
-        
         if (syst.type == "lnN") {
-            cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "lnN", SystMap<>::init(syst.value));
+            // Create lnN systematics with format: lnN_[BIN_NAME]
+            for (const auto& bin : resolved_bins) {
+                cb.cp().bin({bin}).AddSyst(cb, "lnN_" + bin, "lnN", SystMap<>::init(syst.value));
+            }
             
         } else if (syst.type == "rateParam") {
-            // For ABCD systematics, create simple rateParam nuisance parameters
-            // These will be referenced by the ABCD formula later
-            cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "rateParam", SystMap<>::init(syst.value));
+            if (syst.name.find("closure_constraint") != std::string::npos) {
+                // This is the ABCD formula constraint for predicted region
+                cb.cp().bin({predicted_bin}).AddSyst(cb, "scale_" + predicted_bin, "rateParam", SystMapFunc<>::init
+                    ("(@0*@1/@2)", "scale_" + control_bins[0] + ",scale_" + control_bins[1] + ",scale_" + control_bins[2])
+                );
+            } else {
+                // These are individual scale parameters for control regions
+                for (const auto& bin : resolved_bins) {
+                    cb.cp().bin({bin}).AddSyst(cb, "scale_" + bin, "rateParam", SystMap<>::init(syst.value));
+                }
+            }
         }
     }
 }
