@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 
+using std::string;
+
 // Function to process a single configuration file
 int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& options) {
 	// Load configuration
@@ -62,17 +64,24 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	stringlist bkglist(config.backgrounds.begin(), config.backgrounds.end());
 	stringlist siglist(config.signals.begin(), config.signals.end());
 	
+	// Load data if specified in config (for now, use default 2018 data)
+	string year = "18";
+	stringlist datalist = {"DisplacedJet"+year};
+	
 	ST->LoadBkgs(bkglist);
 	ST->LoadSigs(siglist);
+	ST->LoadData(datalist);
 	
 	if (verbosity > 1 && !options.batch_mode) {
 		ST->PrintDict(ST->BkgDict);
+		ST->PrintDict(ST->DataDict);
 		ST->PrintDict(ST->SigDict);
 		ST->PrintKeys(ST->SignalKeys);
 	}
 	
 	// Initialize BuildFitInput
 	BuildFitInput* BFI = new BuildFitInput();
+	BFI->LoadData_byMap(ST->DataDict, luminosity);
 	BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
 	BFI->LoadSig_byMap(ST->SigDict, luminosity);
 	
@@ -93,9 +102,12 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	// Book operations
 	countmap countResults = BFI->CountRegions(BFI->bkg_filtered_dataframes);
 	countmap countResults_S = BFI->CountRegions(BFI->sig_filtered_dataframes);
-	
+	// Only do raw event counts for data
+	countmap countResults_obs = BFI->CountRegions(BFI->data_filtered_dataframes);
+
 	summap sumResults = BFI->SumRegions("evtwt", BFI->bkg_filtered_dataframes);
 	summap sumResults_S = BFI->SumRegions("evtwt", BFI->sig_filtered_dataframes);
+	summap sumResults_obs = BFI->SumRegions("evtwt", BFI->data_filtered_dataframes);
 	
 	// Initiate action
 	BFI->ReportRegions(verbosity > 2 ? 1 : 0);
@@ -103,10 +115,14 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	// Compute errors and report bins
 	errormap errorResults = BFI->ComputeStatError(countResults, BFI->bkg_evtwt);
 	errormap errorResults_S = BFI->ComputeStatError(countResults_S, BFI->sig_evtwt);
+	// TODO - won't use weighted events in fit for data
+	errormap errorResults_obs = BFI->ComputeStatError(countResults_obs, BFI->data_evtwt);
 	
 	// Aggregate maps into more easily useable classes
 	BFI->ConstructBkgBinObjects(countResults, sumResults, errorResults);
 	BFI->AddSigToBinObjects(countResults_S, sumResults_S, errorResults_S, BFI->analysisbins);
+	// Only write data to json if data samples are specified
+	if(datalist.size() > 0) BFI->AddDataToBinObjects(countResults_obs, sumResults_obs, errorResults_obs, BFI->analysisbins);
 	
 	if (verbosity > 0 && !options.batch_mode) {
 		BFI->PrintBins(verbosity > 1 ? 1 : 0);
