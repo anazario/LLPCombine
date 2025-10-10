@@ -76,8 +76,25 @@ def extract_abcd_info(fit_file):
     }
 
 def identify_abcd_regions(data_yields, params):
-    """Identify which bins correspond to ABCD regions A, B, C, D"""
-    # Look for bins with scale parameters
+    """Identify which bins correspond to ABCD regions A, B, C, D based on naming convention"""
+    # For this specific analysis, use the naming convention to identify regions
+    region_mapping = {}
+    
+    for bin_name in data_yields.keys():
+        if "MsHigh_dxySigLow" in bin_name:
+            region_mapping["A"] = bin_name  # Region A: Ms high, dxySig low
+        elif "MsHigh_dxySigHigh" in bin_name:
+            region_mapping["B"] = bin_name  # Region B: Ms high, dxySig high  
+        elif "MsLow_dxySigLow" in bin_name:
+            region_mapping["C"] = bin_name  # Region C: Ms low, dxySig low
+        elif "MsLow_dxySigHigh" in bin_name:
+            region_mapping["D"] = bin_name  # Region D: Ms low, dxySig high
+    
+    # Verify we have all 4 regions
+    if len(region_mapping) == 4 and all(key in region_mapping for key in ["A", "B", "C", "D"]):
+        return region_mapping
+    
+    # Fallback to the old method if naming convention doesn't work
     scale_bins = []
     for param_name in params:
         if param_name.startswith("scale_") and param_name != "scale_r":
@@ -85,8 +102,6 @@ def identify_abcd_regions(data_yields, params):
             if bin_name in data_yields:
                 scale_bins.append(bin_name)
     
-    # Sort bins to identify regions consistently
-    # Usually the predicted region (A) is the one NOT in the scale parameters list
     all_bins = set(data_yields.keys())
     control_bins = set(scale_bins)
     predicted_bins = all_bins - control_bins
