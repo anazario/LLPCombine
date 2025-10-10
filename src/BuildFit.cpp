@@ -114,7 +114,15 @@ void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::stri
 
 void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string datacard_dir, const AnalysisConfig& config) {
     // Validate ABCD configuration
+    std::cout << "DEBUG: In BuildABCDFit, checking config validity..." << std::endl;
+    std::cout << "DEBUG: Regions count: " << config.abcd.regions.size() << std::endl;
+    std::cout << "DEBUG: Predicted region: '" << config.abcd.predicted_region << "'" << std::endl;
+    std::cout << "DEBUG: IsValid result: " << (config.abcd.IsValid() ? "true" : "false") << std::endl;
+    
     if (!config.abcd.IsValid()) {
+        std::cerr << "ABCD configuration validation failed:" << std::endl;
+        std::cerr << "  Regions count: " << config.abcd.regions.size() << " (expected 4)" << std::endl;
+        std::cerr << "  Predicted region: '" << config.abcd.predicted_region << "'" << std::endl;
         throw std::runtime_error("ABCD configuration is invalid");
     }
     
