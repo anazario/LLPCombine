@@ -79,30 +79,78 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 			std::cout << "Filtering to " << config.signal_points.size() << " specific signal points..." << std::endl;
 		}
 		
-		// Filter SignalKeys to only include specified signal points
+		// Create a new filtered signal dictionary with only the specified signal points
+		std::map<std::string, stringlist> filtered_sig_dict;
 		stringlist filtered_signal_keys;
+		
 		for (const auto& point : config.signal_points) {
-			// Check if this signal point exists in the loaded signal keys
-			if (std::find(ST->SignalKeys.begin(), ST->SignalKeys.end(), point) != ST->SignalKeys.end()) {
-				filtered_signal_keys.push_back(point);
-				if (verbosity > 1) {
-					std::cout << "  Including signal point: " << point << std::endl;
+			bool found = false;
+			// Look through all signal types and their files
+			for (const auto& sig_pair : ST->SigDict) {
+				for (const auto& file_path : sig_pair.second) {
+					// Check if this file contains the desired signal point
+					// Signal points are encoded in filenames like: mGl-2000_mN2-400_mN1-200_ct0p1
+					// and we want to match: gogoZ_2000_400_200_10
+					
+					// Extract the parts of the signal point name (e.g. gogoZ_2000_400_200_10)
+					size_t first_underscore = point.find("_");
+					if (first_underscore == std::string::npos) continue;
+					
+					size_t second_underscore = point.find("_", first_underscore + 1);
+					if (second_underscore == std::string::npos) continue;
+					
+					size_t third_underscore = point.find("_", second_underscore + 1);
+					if (third_underscore == std::string::npos) continue;
+					
+					size_t fourth_underscore = point.find("_", third_underscore + 1);
+					if (fourth_underscore == std::string::npos) continue;
+					
+					std::string mgl = point.substr(first_underscore + 1, second_underscore - first_underscore - 1);
+					std::string mn2 = point.substr(second_underscore + 1, third_underscore - second_underscore - 1);
+					std::string mn1 = point.substr(third_underscore + 1, fourth_underscore - third_underscore - 1);
+					std::string ct = point.substr(fourth_underscore + 1);
+					
+					// Convert ct lifetime: 10 -> 0p1, 001 -> 0p001, 30 -> 0p3, etc.
+					std::string ct_formatted;
+					if (ct == "10") ct_formatted = "0p1";
+					else if (ct == "001") ct_formatted = "0p001";
+					else if (ct == "30") ct_formatted = "0p3";
+					else ct_formatted = "0p" + ct;
+					
+					// Check if the filename matches all components
+					if (file_path.find("mGl-" + mgl) != std::string::npos &&
+					    file_path.find("mN2-" + mn2) != std::string::npos &&
+					    file_path.find("mN1-" + mn1) != std::string::npos &&
+					    file_path.find("ct" + ct_formatted) != std::string::npos) {
+						
+						filtered_sig_dict[point].push_back(file_path);
+						filtered_signal_keys.push_back(point);
+						found = true;
+						if (verbosity > 1) {
+							std::cout << "  Including signal point: " << point << " -> " << file_path << std::endl;
+						}
+						break;
+					}
 				}
-			} else {
-				std::cerr << "Warning: Signal point '" << point << "' not found in loaded signals" << std::endl;
+				if (found) break;
+			}
+			
+			if (!found) {
+				std::cerr << "Warning: Signal point '" << point << "' not found in loaded signal files" << std::endl;
 			}
 		}
 		
-		if (filtered_signal_keys.empty()) {
-			std::cerr << "Error: None of the specified signal points were found in the loaded signals" << std::endl;
+		if (filtered_sig_dict.empty()) {
+			std::cerr << "Error: None of the specified signal points were found in the loaded signal files" << std::endl;
 			return 1;
 		}
 		
-		// Replace the signal keys with filtered list
+		// Replace the signal dictionary and keys with the filtered ones
+		ST->SigDict = filtered_sig_dict;
 		ST->SignalKeys = filtered_signal_keys;
 		
 		if (verbosity > 0) {
-			std::cout << "Using " << ST->SignalKeys.size() << " filtered signal points" << std::endl;
+			std::cout << "Using " << filtered_signal_keys.size() << " filtered signal points" << std::endl;
 		}
 	}
 	
