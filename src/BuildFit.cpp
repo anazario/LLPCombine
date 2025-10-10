@@ -97,7 +97,7 @@ void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::stri
 		x->set_rate(obs_rates[x->bin()]);
 	});
 	cb.ForEachProc([&j](ch::Process *x) {
-	    std::cout<<x->bin()<<" "<<x->process()<<"\n";
+	    //std::cout<<x->bin()<<" "<<x->process()<<"\n";
 	    json json_array = j->j[x->bin()][x->process()];
 	    x->set_rate(json_array[1].get<float>());
 	});
@@ -107,7 +107,7 @@ void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::stri
 
 
       
-	//cb.PrintAll();
+	cb.PrintAll();
 	cb.WriteDatacard(datacard_dir+"/"+signalPoint+"/"+signalPoint+".txt");
 
 }
@@ -154,7 +154,7 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     });
     
     cb.ForEachProc([&](ch::Process *x) {
-        std::cout<<x->bin()<<" "<<x->process()<<"\n";
+        //std::cout<<x->bin()<<" "<<x->process()<<"\n";
         if(x->bin() == predicted_bin && x->process() != signalPoint) {
             x->set_rate(predicted_rate);  // Use ABCD prediction
         } else {
