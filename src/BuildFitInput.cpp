@@ -210,7 +210,10 @@ errormap BuildFitInput::ComputeStatError( countmap countResults, map< std::strin
         // Access key and values from both maps
         ROOT::RDF::RResultPtr<long long unsigned int> count_result = it.second;
         double count = (double) *count_result;
+		std::cout << "DEBUG: Looking up weight for key: '" << it.first.first << "'" << std::endl;
+		std::cout << "DEBUG: Weight found: " << evtwt[it.first.first] << std::endl;
 		double err = evtwt[it.first.first] * std::sqrt( count );
+		std::cout << "DEBUG: Count=" << count << " Weight=" << evtwt[it.first.first] << " Error=" << err << std::endl;
 		errorResults[std::make_pair( it.first.first, it.first.second)] = err;
     }
     return errorResults;
