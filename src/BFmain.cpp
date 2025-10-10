@@ -187,11 +187,6 @@ int main(int argc, char* argv[]) {
 	for (size_t i = 0; i < signals.size(); i++) {
 		if (verbose) {
 			std::cout << "Processing signal " << (i+1) << "/" << signals.size() << ": " << signals[i] << std::endl;
-		} else {
-			std::cout << "building obs rates" << std::endl;
-			std::cout << "Getting process list" << std::endl;
-			std::cout << "Parse Signal point" << std::endl;
-			std::cout << "Build cb objects" << std::endl;
 		}
 		
 		BuildFit* BF = new BuildFit();
