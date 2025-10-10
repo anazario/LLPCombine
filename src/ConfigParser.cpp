@@ -526,6 +526,21 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
 void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
     std::cout << "DEBUG: ParseSystematics called - implementing..." << std::endl;
     
+    // Debug: Print all keys to see what the parser found
+    std::cout << "DEBUG: All parser.values keys:" << std::endl;
+    for (const auto& pair : parser.values) {
+        if (pair.first.find("systematics") != std::string::npos) {
+            std::cout << "  " << pair.first << " = " << pair.second << std::endl;
+        }
+    }
+    
+    std::cout << "DEBUG: All parser.lists keys:" << std::endl;
+    for (const auto& pair : parser.lists) {
+        if (pair.first.find("systematics") != std::string::npos) {
+            std::cout << "  " << pair.first << " (list of " << pair.second.size() << " items)" << std::endl;
+        }
+    }
+    
     // Parse ABCD systematics
     ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
     
