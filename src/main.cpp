@@ -64,21 +64,26 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	stringlist bkglist(config.backgrounds.begin(), config.backgrounds.end());
 	stringlist siglist(config.signals.begin(), config.signals.end());
 	
+	// Load data if specified in config (for now, use default 2018 data)
+	string year = "18";
+	stringlist datalist = {"DisplacedJet"+year};
+	
 	ST->LoadBkgs(bkglist);
 	ST->LoadSigs(siglist);
+	ST->LoadData(datalist);
 	
 	if (verbosity > 1 && !options.batch_mode) {
 		ST->PrintDict(ST->BkgDict);
+		ST->PrintDict(ST->DataDict);
 		ST->PrintDict(ST->SigDict);
 		ST->PrintKeys(ST->SignalKeys);
 	}
 	
 	// Initialize BuildFitInput
 	BuildFitInput* BFI = new BuildFitInput();
+	BFI->LoadData_byMap(ST->DataDict, luminosity);
 	BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
 	BFI->LoadSig_byMap(ST->SigDict, luminosity);
-	// For data, use background dict as placeholder (data loading differs in this version)
-	BFI->LoadData_byMap(ST->BkgDict, luminosity);
 	
 	// Create analysis bins from configuration
 	for (const auto& bin : config.bins) {
@@ -116,8 +121,8 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	// Aggregate maps into more easily useable classes
 	BFI->ConstructBkgBinObjects(countResults, sumResults, errorResults);
 	BFI->AddSigToBinObjects(countResults_S, sumResults_S, errorResults_S, BFI->analysisbins);
-	// Add data observations (using background data as proxy in this version)
-	BFI->AddDataToBinObjects(countResults_obs, sumResults_obs, errorResults_obs, BFI->analysisbins);
+	// Only write data to json if data samples are specified
+	if(datalist.size() > 0) BFI->AddDataToBinObjects(countResults_obs, sumResults_obs, errorResults_obs, BFI->analysisbins);
 	
 	if (verbosity > 0 && !options.batch_mode) {
 		BFI->PrintBins(verbosity > 1 ? 1 : 0);
