@@ -194,21 +194,9 @@ void BuildFit::ApplySystematics(const std::vector<SystematicConfig>& systematics
             cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "lnN", SystMap<>::init(syst.value));
             
         } else if (syst.type == "rateParam") {
-            if (syst.formula == "auto") {
-                // Use ABCD formula with auto parameter mapping
-                std::vector<std::string> formula_params = abcd.GetFormulaParameters();
-                std::string param_string = JoinStrings(formula_params, ",");
-                cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "rateParam", 
-                    SystMapFunc<>::init(abcd.formula, param_string));
-            } else if (!syst.formula.empty()) {
-                // Custom formula
-                std::string param_string = JoinStrings(syst.parameters, ",");
-                cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "rateParam", 
-                    SystMapFunc<>::init(syst.formula, param_string));
-            } else {
-                // Simple rateParam
-                cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "rateParam", SystMap<>::init(syst.value));
-            }
+            // For ABCD systematics, create simple rateParam nuisance parameters
+            // These will be referenced by the ABCD formula later
+            cb.cp().bin(resolved_bins).AddSyst(cb, syst.name, "rateParam", SystMap<>::init(syst.value));
         }
     }
 }
