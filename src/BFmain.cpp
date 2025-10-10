@@ -164,6 +164,11 @@ int main(int argc, char* argv[]) {
         std::cout << "  Predicted region: " << analysis_config.abcd.predicted_region << std::endl;
         std::cout << "  Formula: " << analysis_config.abcd.formula << std::endl;
         std::cout << "  Generate datacards: " << (analysis_config.abcd.generate_datacards ? "yes" : "no") << std::endl;
+        std::cout << "  Regions count: " << analysis_config.abcd.regions.size() << std::endl;
+        for (const auto& region : analysis_config.abcd.regions) {
+            std::cout << "    " << region.first << " -> " << region.second << std::endl;
+        }
+        std::cout << "  IsValid: " << (analysis_config.abcd.IsValid() ? "true" : "false") << std::endl;
         std::cout << std::endl;
     }
 
