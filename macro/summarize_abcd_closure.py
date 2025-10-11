@@ -136,15 +136,30 @@ def extract_abcd_info(fit_file, verbose=False):
     # If no workspace or no data found, try to extract from datacard
     if not data_yields:
         print("INFO: Attempting to extract observed data from datacard...")
-        datacard_path = os.path.join(os.path.dirname(fit_file), "datacard.txt")
-        if os.path.exists(datacard_path):
+        # Try common datacard names
+        fit_dir = os.path.dirname(fit_file)
+        for datacard_name in ["datacard.txt", "combine_datacard.txt", "datacard_*.txt"]:
+            if "*" in datacard_name:
+                import glob
+                matches = glob.glob(os.path.join(fit_dir, datacard_name))
+                if matches:
+                    datacard_path = matches[0]
+                    break
+            else:
+                datacard_path = os.path.join(fit_dir, datacard_name)
+                if os.path.exists(datacard_path):
+                    break
+        else:
+            datacard_path = None
+            
+        if datacard_path and os.path.exists(datacard_path):
             data_yields = extract_observations_from_datacard(datacard_path)
             if data_yields:
-                print("SUCCESS: Extracted observed data from datacard")
+                print(f"SUCCESS: Extracted observed data from {datacard_path}")
             else:
                 print("ERROR: Could not extract observations from datacard")
         else:
-            print(f"ERROR: Datacard not found at {datacard_path}")
+            print(f"ERROR: No datacard found in {fit_dir}")
     
     # Final fallback with proper error handling
     if not data_yields:
