@@ -47,7 +47,7 @@ def create_abcd_systematics_auto(syst_prefix, precision_value):
       bins: ["auto_predicted"]
       processes: ["backgrounds"]
 
-  precision_systematics:
+precision_systematics:
     # Precision systematics for control regions only
     - name: "{syst_prefix}_precision_control1"
       type: "lnN"
