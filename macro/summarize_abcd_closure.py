@@ -22,7 +22,7 @@ def find_fit_files(datacard_dir):
     files = glob.glob(pattern)
     return files
 
-def extract_abcd_info(fit_file):
+def extract_abcd_info(fit_file, verbose=False):
     """Extract ABCD closure information from fit diagnostics file"""
     f = ROOT.TFile.Open(fit_file, "READ")
     if not f or f.IsZombie():
@@ -57,28 +57,46 @@ def extract_abcd_info(fit_file):
     shapes_postfit = f.Get("shapes_fit_b")
     
     data_yields = {}
-    if shapes_prefit:
-        # Look for data histograms in each bin
-        for key in shapes_prefit.GetListOfKeys():
-            bin_name = key.GetName()
-            bin_dir = shapes_prefit.GetDirectory(bin_name)
-            if bin_dir:
-                # Debug: print what's available in this directory
-                print(f"DEBUG: Available histograms in {bin_name}:")
-                for subkey in bin_dir.GetListOfKeys():
-                    print(f"  - {subkey.GetName()}")
-                
-                # Try data_obs first (standard name), then data
-                data_hist = bin_dir.Get("data_obs")
-                if not data_hist:
-                    data_hist = bin_dir.Get("data")
-                    
-                if data_hist:
-                    integral = data_hist.Integral()
-                    print(f"DEBUG: {bin_name} data integral = {integral}")
-                    data_yields[bin_name] = integral
-                else:
-                    print(f"ERROR: No data histogram found in {bin_name}")
+    
+    # Get the original observed data from the RooWorkspace 
+    workspace = f.Get("w")
+    if workspace:
+        # Debug: print all variables in workspace to see what's available
+        if verbose:
+            print("DEBUG: Available variables in workspace:")
+            var_iter = workspace.allVars().createIterator()
+            var = var_iter.Next()
+            while var:
+                print(f"  - {var.GetName()} = {var.getVal()}")
+                var = var_iter.Next()
+        
+        # Try different naming patterns for observed data
+        all_bins = []
+        if shapes_prefit:
+            for key in shapes_prefit.GetListOfKeys():
+                all_bins.append(key.GetName())
+        
+        for bin_name in all_bins:
+            found = False
+            # Try various naming conventions for observed data in workspace
+            for pattern in [f"n_obs_{bin_name}", f"n_obs_bin{bin_name}", f"obs_{bin_name}", 
+                           f"{bin_name}_obs", f"data_obs_{bin_name}"]:
+                obs_var = workspace.var(pattern)
+                if obs_var:
+                    data_yields[bin_name] = obs_var.getVal()
+                    print(f"DEBUG: Found observed data - {bin_name} = {obs_var.getVal()}")
+                    found = True
+                    break
+            
+            if not found:
+                print(f"WARNING: Could not find observed data for {bin_name} in workspace")
+    
+    # If workspace doesn't exist or doesn't have the data, the ROOT file is incomplete
+    if not data_yields:
+        print("ERROR: Could not find original observed data in ROOT file workspace.")
+        print("       This suggests the fitDiagnostics was not run with --saveWorkspace")
+        print("       or the datacard was not set up correctly.")
+        print("       Re-run combine with: combine -M FitDiagnostics --saveWorkspace datacard.txt")
     
     f.Close()
     
@@ -370,7 +388,7 @@ def main():
             print(f"\nProcessing: {fit_file}")
         
         # Extract ABCD information
-        abcd_info = extract_abcd_info(fit_file)
+        abcd_info = extract_abcd_info(fit_file, args.verbose)
         if not abcd_info:
             continue
             
