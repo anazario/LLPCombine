@@ -29,35 +29,62 @@ def extract_observations_from_datacard(datacard_path):
         with open(datacard_path, 'r') as f:
             lines = f.readlines()
         
+        print(f"DEBUG: Parsing datacard {datacard_path}")
+        
         # Find the observation line
+        observations = []
         for line in lines:
             line = line.strip()
             if line.startswith('observation'):
                 parts = line.split()
                 if len(parts) >= 2:
                     observations = [float(x) for x in parts[1:]]
+                    print(f"DEBUG: Found observations: {observations}")
                     break
-        else:
+        
+        if not observations:
+            print("DEBUG: No observation line found")
             return {}
         
-        # Find the bin line to match observations to bin names
+        # Find the bin names from the first bin line after the separator
+        bin_names = []
+        found_separator = False
         for line in lines:
             line = line.strip()
-            if line.startswith('bin') and not line.startswith('bin '):
+            if '----' in line:
+                found_separator = True
+                continue
+            if found_separator and line.startswith('bin'):
                 parts = line.split()
                 if len(parts) >= 2:
                     bin_names = parts[1:]
+                    print(f"DEBUG: Found bin names: {bin_names}")
                     break
-        else:
+        
+        if not bin_names:
+            print("DEBUG: No bin names found")
             return {}
         
+        # Get unique bin names (the line may have duplicates)
+        unique_bins = []
+        for bin_name in bin_names:
+            if bin_name not in unique_bins:
+                unique_bins.append(bin_name)
+        
+        print(f"DEBUG: Unique bins: {unique_bins}")
+        
         # Match observations to bin names
-        if len(observations) == len(bin_names):
-            for bin_name, obs in zip(bin_names, observations):
-                data_yields[bin_name] = int(obs) if obs.is_integer() else obs
+        if len(observations) == len(unique_bins):
+            for bin_name, obs in zip(unique_bins, observations):
+                data_yields[bin_name] = int(obs) if obs == int(obs) else obs
+                print(f"DEBUG: {bin_name} = {data_yields[bin_name]}")
+        else:
+            print(f"DEBUG: Mismatch - {len(observations)} observations vs {len(unique_bins)} bins")
                 
     except Exception as e:
         print(f"ERROR: Failed to parse datacard {datacard_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return {}
     
     return data_yields
