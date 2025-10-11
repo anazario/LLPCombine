@@ -22,6 +22,46 @@ def find_fit_files(datacard_dir):
     files = glob.glob(pattern)
     return files
 
+def extract_observations_from_datacard(datacard_path):
+    """Extract observed data from datacard file"""
+    data_yields = {}
+    try:
+        with open(datacard_path, 'r') as f:
+            lines = f.readlines()
+        
+        # Find the observation line
+        for line in lines:
+            line = line.strip()
+            if line.startswith('observation'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    observations = [float(x) for x in parts[1:]]
+                    break
+        else:
+            return {}
+        
+        # Find the bin line to match observations to bin names
+        for line in lines:
+            line = line.strip()
+            if line.startswith('bin') and not line.startswith('bin '):
+                parts = line.split()
+                if len(parts) >= 2:
+                    bin_names = parts[1:]
+                    break
+        else:
+            return {}
+        
+        # Match observations to bin names
+        if len(observations) == len(bin_names):
+            for bin_name, obs in zip(bin_names, observations):
+                data_yields[bin_name] = int(obs) if obs.is_integer() else obs
+                
+    except Exception as e:
+        print(f"ERROR: Failed to parse datacard {datacard_path}: {e}")
+        return {}
+    
+    return data_yields
+
 def extract_abcd_info(fit_file, verbose=False):
     """Extract ABCD closure information from fit diagnostics file"""
     f = ROOT.TFile.Open(fit_file, "READ")
@@ -90,13 +130,26 @@ def extract_abcd_info(fit_file, verbose=False):
             
             if not found:
                 print(f"WARNING: Could not find observed data for {bin_name} in workspace")
+    else:
+        print("DEBUG: No workspace found in ROOT file")
     
-    # If workspace doesn't exist or doesn't have the data, the ROOT file is incomplete
+    # If no workspace or no data found, try to extract from datacard
     if not data_yields:
-        print("ERROR: Could not find original observed data in ROOT file workspace.")
-        print("       This suggests the fitDiagnostics was not run with --saveWorkspace")
-        print("       or the datacard was not set up correctly.")
-        print("       Re-run combine with: combine -M FitDiagnostics --saveWorkspace datacard.txt")
+        print("INFO: Attempting to extract observed data from datacard...")
+        datacard_path = os.path.join(os.path.dirname(fit_file), "datacard.txt")
+        if os.path.exists(datacard_path):
+            data_yields = extract_observations_from_datacard(datacard_path)
+            if data_yields:
+                print("SUCCESS: Extracted observed data from datacard")
+            else:
+                print("ERROR: Could not extract observations from datacard")
+        else:
+            print(f"ERROR: Datacard not found at {datacard_path}")
+    
+    # Final fallback with proper error handling
+    if not data_yields:
+        print("ERROR: Could not find original observed data anywhere.")
+        print("       Please ensure the datacard contains 'observation' line with the true data.")
     
     f.Close()
     
@@ -177,7 +230,7 @@ def identify_abcd_regions(data_yields, params):
             abcd_mapping['D'] = had_bins[1]  # nHad1CRD
     
     # Final fallback: alphabetical assignment
-    if len(abcd_mapping) < 4:
+    if len(abcd_mapping) < 4 and len(all_bins) >= 4:
         sorted_bins = sorted(all_bins)
         abcd_mapping = {
             'A': sorted_bins[0],
@@ -185,6 +238,9 @@ def identify_abcd_regions(data_yields, params):
             'C': sorted_bins[2],
             'D': sorted_bins[3]
         }
+    elif len(all_bins) < 4:
+        print(f"ERROR: Need at least 4 bins for ABCD analysis, found only {len(all_bins)}")
+        return {}
     
     # Determine which region is predicted and return appropriate mapping
     predicted_label = None
