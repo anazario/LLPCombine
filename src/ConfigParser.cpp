@@ -545,21 +545,30 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
     }
     
     // Parse flat YAML structure (what SimpleYAMLParser actually supports)
-    ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
-    ParseSystematicCategory(parser, "systematics.precision_systematics", config_.precision_systematics);
-    ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
+    // The parser puts everything in "systematics" list, so we need to manually separate by category
+    ParseSystematicsFromCombinedList(parser);
     
     std::cout << "DEBUG ParseSystematics: Complete. Found " << config_.abcd_systematics.size() << " ABCD, " 
               << config_.precision_systematics.size() << " precision, " << config_.experimental_systematics.size() << " experimental" << std::endl;
 }
 
 void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
+    std::cout << "DEBUG ParseSystematicCategory: Looking for " << category_prefix << std::endl;
+    
+    // Debug: print what lists are available
+    std::cout << "DEBUG: Available lists:" << std::endl;
+    for (const auto& pair : parser.lists) {
+        std::cout << "  " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
+    }
+    
     // Get the list of systematic names
     if (parser.lists.count(category_prefix) == 0) {
+        std::cout << "DEBUG: No list found for " << category_prefix << std::endl;
         return; // No systematics for this category
     }
     
     const auto& systematic_names = parser.lists.at(category_prefix);
+    std::cout << "DEBUG: Found " << systematic_names.size() << " systematic names for " << category_prefix << std::endl;
     
     // Get common properties for this category
     std::string common_type;
@@ -696,4 +705,105 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
     }
     
     std::cout << "DEBUG: Found " << systematics.size() << " systematics for " << category_prefix << std::endl;
+}
+
+void ConfigParser::ParseSystematicsFromCombinedList(const SimpleYAMLParser& parser) {
+    std::cout << "DEBUG ParseSystematicsFromCombinedList: Starting..." << std::endl;
+    
+    if (!parser.lists.count("systematics")) {
+        std::cout << "DEBUG: No systematics list found" << std::endl;
+        return;
+    }
+    
+    const auto& all_items = parser.lists.at("systematics");
+    std::cout << "DEBUG: Found systematics list with " << all_items.size() << " items" << std::endl;
+    
+    // Print all items to understand structure
+    for (size_t i = 0; i < all_items.size(); ++i) {
+        std::cout << "DEBUG: Item " << i << ": '" << all_items[i] << "'" << std::endl;
+    }
+    
+    // Separate systematic names by category based on naming patterns
+    std::vector<std::string> abcd_names, precision_names, experimental_names;
+    
+    for (const std::string& item : all_items) {
+        if (item.find("scale_") == 0 || item.find("abcd_") == 0) {
+            abcd_names.push_back(item);
+        } else if (item.find("precision") != std::string::npos) {
+            precision_names.push_back(item);
+        } else if (item.find("experimental") != std::string::npos) {
+            experimental_names.push_back(item);
+        }
+    }
+    
+    std::cout << "DEBUG: Separated systematics - ABCD: " << abcd_names.size() 
+              << ", Precision: " << precision_names.size() 
+              << ", Experimental: " << experimental_names.size() << std::endl;
+    
+    // Create systematics for each category
+    CreateSystematicsFromNames(parser, abcd_names, "abcd_systematics", config_.abcd_systematics);
+    CreateSystematicsFromNames(parser, precision_names, "precision_systematics", config_.precision_systematics);
+    CreateSystematicsFromNames(parser, experimental_names, "experimental_systematics", config_.experimental_systematics);
+}
+
+void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, const std::vector<std::string>& names, const std::string& category, std::vector<SystematicConfig>& systematics) {
+    if (names.empty()) return;
+    
+    std::cout << "DEBUG CreateSystematicsFromNames: Processing " << category << " with " << names.size() << " names" << std::endl;
+    
+    // Get common properties for this category
+    std::string common_type = "";
+    double common_value = 1.0;
+    std::vector<std::string> bins_list, processes_list;
+    
+    std::string type_key = "systematics." + category + ".type";
+    std::string value_key = "systematics." + category + ".value";
+    std::string bins_key = "systematics." + category + ".bins";
+    std::string processes_key = "systematics." + category + ".processes";
+    
+    if (parser.values.count(type_key)) {
+        common_type = parser.values.at(type_key);
+        std::cout << "DEBUG: Found type: " << common_type << std::endl;
+    }
+    
+    if (parser.values.count(value_key)) {
+        try {
+            common_value = std::stod(parser.values.at(value_key));
+        } catch (...) {
+            common_value = 1.0;
+        }
+        std::cout << "DEBUG: Found value: " << common_value << std::endl;
+    }
+    
+    if (parser.lists.count(bins_key)) {
+        bins_list = parser.lists.at(bins_key);
+        std::cout << "DEBUG: Found " << bins_list.size() << " bins" << std::endl;
+    }
+    
+    if (parser.lists.count(processes_key)) {
+        processes_list = parser.lists.at(processes_key);
+        std::cout << "DEBUG: Found " << processes_list.size() << " processes" << std::endl;
+    }
+    
+    // Create systematics - one for each name
+    for (size_t i = 0; i < names.size(); i++) {
+        SystematicConfig syst;
+        syst.name = names[i];
+        syst.type = common_type;
+        syst.value = common_value;
+        
+        // Assign bins and processes (use index if arrays are long enough)
+        if (i < bins_list.size()) {
+            syst.bins.push_back(bins_list[i]);
+        }
+        if (i < processes_list.size()) {
+            syst.processes.push_back(processes_list[i]);
+        }
+        
+        std::cout << "DEBUG: Created systematic: " << syst.name << " (type=" << syst.type 
+                  << ", value=" << syst.value << ", bins=" << syst.bins.size() 
+                  << ", processes=" << syst.processes.size() << ")" << std::endl;
+        
+        systematics.push_back(syst);
+    }
 }
