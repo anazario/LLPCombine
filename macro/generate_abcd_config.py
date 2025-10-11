@@ -271,9 +271,14 @@ def main():
     template = Template(template_content)
     
     # Substitute systematics block separately to handle nested substitutions
-    systematics_yaml = yaml.dump(systematics)
+    systematics_yaml = yaml.dump(systematics, default_flow_style=False, indent=2)
     systematics_template = Template(systematics_yaml)
-    substitutions["SYSTEMATICS_BLOCK"] = systematics_template.safe_substitute(substitutions)
+    systematics_substituted = systematics_template.safe_substitute(substitutions)
+    
+    # Indent the systematics block properly for YAML
+    systematics_indented = "\n".join("  " + line if line.strip() else line 
+                                    for line in systematics_substituted.split("\n"))
+    substitutions["SYSTEMATICS_BLOCK"] = systematics_indented
     
     output_content = template.safe_substitute(substitutions)
     

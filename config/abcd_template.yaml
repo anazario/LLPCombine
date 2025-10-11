@@ -44,7 +44,8 @@ bins:
     cuts: ${REGION_D_CUTS}
 
 # Flexible systematics - completely parameterized
-systematics: ${SYSTEMATICS_BLOCK}
+systematics:
+${SYSTEMATICS_BLOCK}
 
 # Runtime options
 options:

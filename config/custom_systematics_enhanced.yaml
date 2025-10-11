@@ -1,0 +1,66 @@
+abcd_systematics:
+  # Standard ABCD rate parameters
+  - name: "scale_${SYST_PREFIX}_B"
+    type: "rateParam"
+    value: 1.0
+    bins: ["auto_control_1"]
+    processes: ["backgrounds"]
+    
+  - name: "scale_${SYST_PREFIX}_C"
+    type: "rateParam"
+    value: 1.0
+    bins: ["auto_control_2"]
+    processes: ["backgrounds"]
+    
+  - name: "scale_${SYST_PREFIX}_D"
+    type: "rateParam"
+    value: 1.0
+    bins: ["auto_control_3"]
+    processes: ["backgrounds"]
+
+  # ABCD formula constraint
+  - name: "abcd_${SYST_PREFIX}_constraint"
+    type: "rateParam"
+    formula: "auto"
+    bins: ["auto_predicted"]
+    processes: ["backgrounds"]
+
+precision_systematics:
+  # Enhanced precision systematics for control regions
+  - name: "${SYST_PREFIX}_precision_B"
+    type: "lnN"
+    value: "${PRECISION_VALUE}"
+    bins: ["auto_control_1"]
+    processes: ["backgrounds"]
+    
+  - name: "${SYST_PREFIX}_precision_C"
+    type: "lnN"
+    value: "${PRECISION_VALUE}"
+    bins: ["auto_control_2"]
+    processes: ["backgrounds"]
+    
+  - name: "${SYST_PREFIX}_precision_D"
+    type: "lnN"
+    value: "${PRECISION_VALUE}"
+    bins: ["auto_control_3"]
+    processes: ["backgrounds"]
+
+experimental_systematics:
+  # Additional experimental uncertainties
+  - name: "${SYST_PREFIX}_trigger_eff"
+    type: "lnN"
+    value: 1.05
+    bins: ["all"]
+    processes: ["backgrounds"]
+    
+  - name: "${SYST_PREFIX}_jet_energy_scale"
+    type: "lnN"
+    value: 1.08
+    bins: ["all"]  
+    processes: ["backgrounds"]
+    
+  - name: "${SYST_PREFIX}_met_resolution"
+    type: "lnN"
+    value: 1.03
+    bins: ["auto_control_1", "auto_control_2"]
+    processes: ["backgrounds"]
