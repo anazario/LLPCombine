@@ -121,17 +121,20 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
         throw std::runtime_error("ABCD configuration is invalid");
     }
     
-    // Get predicted region and control regions
-    std::string predicted_bin = config.abcd.GetPredictedBin();
-    std::vector<std::string> control_bins = config.abcd.GetControlBins();
+    // Get ABCD regions in proper order from config
+    std::string region_A = config.abcd.regions.at("region_A");
+    std::string region_B = config.abcd.regions.at("region_B"); 
+    std::string region_C = config.abcd.regions.at("region_C");
+    std::string region_D = config.abcd.regions.at("region_D");
     
-    if (control_bins.size() != 3) {
-        throw std::runtime_error("ABCD method requires exactly 3 control regions");
-    }
+    std::string predicted_bin = config.abcd.GetPredictedBin();
     
     std::cout << "=== ABCD Configuration ===" << std::endl;
+    std::cout << "Region A: " << region_A << std::endl;
+    std::cout << "Region B: " << region_B << std::endl;
+    std::cout << "Region C: " << region_C << std::endl;
+    std::cout << "Region D: " << region_D << std::endl;
     std::cout << "Predicted region: " << predicted_bin << std::endl;
-    std::cout << "Control regions: " << control_bins[0] << ", " << control_bins[1] << ", " << control_bins[2] << std::endl;
     
     // Standard CombineHarvester setup
     ch::Categories cats = BuildCats(j);
@@ -139,12 +142,22 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     std::vector<std::string> bkgprocs = GetBkgProcs(j);
     std::vector<std::string> signalDetails = ExtractSignalDetails(signalPoint);
     
+    // Get the control regions (the 3 regions that are NOT being predicted)
+    std::vector<std::string> all_regions = {region_A, region_B, region_C, region_D};
+    std::vector<std::string> control_regions;
+    
+    for (const auto& region : all_regions) {
+        if (region != predicted_bin) {
+            control_regions.push_back(region);
+        }
+    }
+    
     // Calculate ABCD prediction: predicted = control1 * control2 / control3
-    double predicted_rate = obs_rates[control_bins[0]] * obs_rates[control_bins[1]] / obs_rates[control_bins[2]];
+    double predicted_rate = obs_rates[control_regions[0]] * obs_rates[control_regions[1]] / obs_rates[control_regions[2]];
     
     std::cout << "ABCD Calculation:" << std::endl;
-    std::cout << "  " << predicted_bin << " = " << control_bins[0] << " * " << control_bins[1] << " / " << control_bins[2] << std::endl;
-    std::cout << "  " << predicted_bin << " = " << obs_rates[control_bins[0]] << " * " << obs_rates[control_bins[1]] << " / " << obs_rates[control_bins[2]] << " = " << predicted_rate << std::endl;
+    std::cout << "  " << predicted_bin << " = " << control_regions[0] << " * " << control_regions[1] << " / " << control_regions[2] << std::endl;
+    std::cout << "  " << predicted_bin << " = " << obs_rates[control_regions[0]] << " * " << obs_rates[control_regions[1]] << " / " << obs_rates[control_regions[2]] << " = " << predicted_rate << std::endl;
     
     // Add observations and processes
     cb.AddObservations({"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, cats);
@@ -221,7 +234,7 @@ void BuildFit::ApplySystematics(const std::vector<SystematicConfig>& systematics
             if (syst.name.find("closure_constraint") != std::string::npos) {
                 // This is the ABCD formula constraint for predicted region
                 std::cout << "DEBUG: Adding ABCD formula constraint for " << predicted_bin << std::endl;
-                cb.cp().bin({predicted_bin}).AddSyst(cb, "scale_" + predicted_bin, "rateParam", SystMapFunc<>::init
+                cb.cp().bin({predicted_bin}).AddSyst(cb, "scale_$BIN", "rateParam", SystMapFunc<>::init
                     ("(@0*@1/@2)", "scale_" + control_bins[0] + ",scale_" + control_bins[1] + ",scale_" + control_bins[2])
                 );
             } else {
