@@ -76,11 +76,10 @@ def extract_abcd_info(fit_file):
     }
 
 def identify_abcd_regions(data_yields, params):
-    """Identify which bins correspond to ABCD regions and which one is predicted"""
+    """Identify ABCD regions and determine correct formula based on region structure"""
     all_bins = list(data_yields.keys())
     
     # Find the predicted bin by looking for the one with error = 0 (fixed by formula)
-    # or no scale parameter (controlled by ABCD constraint)
     predicted_bin = None
     for bin_name in all_bins:
         scale_param = f"scale_{bin_name}"
@@ -89,19 +88,17 @@ def identify_abcd_regions(data_yields, params):
                 predicted_bin = bin_name
                 break
         else:
-            # Bin without scale parameter is likely the predicted one
             predicted_bin = bin_name
             break
     
-    # If no clear predicted bin found, look for naming patterns
+    # Fallback methods if not found
     if not predicted_bin:
         for bin_name in all_bins:
             bin_lower = bin_name.lower()
-            if 'sr' in bin_lower or 'signal' in bin_lower:
+            if 'sr' in bin_lower or 'signal' in bin_lower or 'cra' in bin_lower:
                 predicted_bin = bin_name
                 break
     
-    # If still not found, use the bin with smallest scale factor error as fallback
     if not predicted_bin:
         min_rel_error = float('inf')
         for bin_name in all_bins:
@@ -113,88 +110,157 @@ def identify_abcd_regions(data_yields, params):
                     predicted_bin = bin_name
     
     if not predicted_bin and len(all_bins) > 0:
-        predicted_bin = all_bins[0]  # Ultimate fallback
+        predicted_bin = all_bins[0]
     
-    # Get the three control bins
+    # Now identify the proper ABCD structure
     control_bins = [b for b in all_bins if b != predicted_bin]
-    control_bins.sort()  # Sort for consistent assignment
     
-    # Create mapping with predicted bin as "PREDICTED" and controls as generic labels
-    region_mapping = {
-        "predicted": predicted_bin,
-        "control_1": control_bins[0] if len(control_bins) > 0 else None,
-        "control_2": control_bins[1] if len(control_bins) > 1 else None,
-        "control_3": control_bins[2] if len(control_bins) > 2 else None
+    # Try to identify ABCD structure from naming patterns
+    abcd_mapping = {}
+    for bin_name in all_bins:
+        bin_lower = bin_name.lower()
+        if 'cra' in bin_lower or (predicted_bin == bin_name):
+            abcd_mapping['A'] = bin_name
+        elif 'crb' in bin_lower:
+            abcd_mapping['B'] = bin_name  
+        elif 'crc' in bin_lower:
+            abcd_mapping['C'] = bin_name
+        elif 'crd' in bin_lower:
+            abcd_mapping['D'] = bin_name
+    
+    # If no clear CR pattern, try lepton/hadron pattern for 2x2 ABCD
+    if len(abcd_mapping) < 4:
+        abcd_mapping = {}
+        lep_bins = [b for b in all_bins if 'lep' in b.lower()]
+        had_bins = [b for b in all_bins if 'had' in b.lower()]
+        
+        if len(lep_bins) == 2 and len(had_bins) == 2:
+            # Sort each group to get consistent assignment
+            lep_bins.sort()
+            had_bins.sort() 
+            
+            # Standard 2x2 ABCD assignment
+            abcd_mapping['A'] = lep_bins[0]  # nLep1CRA
+            abcd_mapping['B'] = lep_bins[1]  # nLep1CRB  
+            abcd_mapping['C'] = had_bins[0]  # nHad1CRC
+            abcd_mapping['D'] = had_bins[1]  # nHad1CRD
+    
+    # Final fallback: alphabetical assignment
+    if len(abcd_mapping) < 4:
+        sorted_bins = sorted(all_bins)
+        abcd_mapping = {
+            'A': sorted_bins[0],
+            'B': sorted_bins[1], 
+            'C': sorted_bins[2],
+            'D': sorted_bins[3]
+        }
+    
+    # Determine which region is predicted and return appropriate mapping
+    predicted_label = None
+    for label, bin_name in abcd_mapping.items():
+        if bin_name == predicted_bin:
+            predicted_label = label
+            break
+    
+    return {
+        "abcd_mapping": abcd_mapping,
+        "predicted_region": predicted_label,
+        "predicted_bin": predicted_bin
     }
-    
-    return region_mapping
 
 def calculate_closure_metrics(abcd_info):
-    """Calculate ABCD closure metrics"""
+    """Calculate ABCD closure metrics using proper formula"""
     params = abcd_info["params"]
     data_yields = abcd_info["data_yields"]
     
     # Identify regions
     regions = identify_abcd_regions(data_yields, params)
-    if not regions or not regions.get("predicted"):
+    if not regions or not regions.get("predicted_region"):
         return None
     
-    # Get yields - predicted region and three control regions
-    predicted_bin = regions["predicted"]
-    control_bins = [regions["control_1"], regions["control_2"], regions["control_3"]]
-    control_bins = [b for b in control_bins if b is not None]
+    abcd_mapping = regions["abcd_mapping"] 
+    predicted_region = regions["predicted_region"]
     
-    if len(control_bins) < 3:
-        return None  # Need at least 3 control regions for ABCD
+    # Get yields for all ABCD regions
+    yield_A = data_yields.get(abcd_mapping["A"], 0)
+    yield_B = data_yields.get(abcd_mapping["B"], 0) 
+    yield_C = data_yields.get(abcd_mapping["C"], 0)
+    yield_D = data_yields.get(abcd_mapping["D"], 0)
     
-    yield_predicted_true = data_yields.get(predicted_bin, 0)  # TRUE yield in predicted region
-    yield_ctrl1 = data_yields.get(control_bins[0], 0)
-    yield_ctrl2 = data_yields.get(control_bins[1], 0)
-    yield_ctrl3 = data_yields.get(control_bins[2], 0)
+    # Get scale factors
+    scale_A = params.get(f"scale_{abcd_mapping['A']}", {"value": 1.0, "error": 0.0})
+    scale_B = params.get(f"scale_{abcd_mapping['B']}", {"value": 1.0, "error": 0.0})
+    scale_C = params.get(f"scale_{abcd_mapping['C']}", {"value": 1.0, "error": 0.0})
+    scale_D = params.get(f"scale_{abcd_mapping['D']}", {"value": 1.0, "error": 0.0})
     
-    # Get scale factors from fit
-    scale_predicted = params.get(f"scale_{predicted_bin}", {"value": 1.0, "error": 0.0})
-    scale_ctrl1 = params.get(f"scale_{control_bins[0]}", {"value": 1.0, "error": 0.0})
-    scale_ctrl2 = params.get(f"scale_{control_bins[1]}", {"value": 1.0, "error": 0.0})
-    scale_ctrl3 = params.get(f"scale_{control_bins[2]}", {"value": 1.0, "error": 0.0})
+    # Calculate predictions using correct ABCD formula based on which region is predicted
+    if predicted_region == "A":
+        # A = B * C / D (standard ABCD)
+        naive_pred = (yield_B * yield_C / yield_D) if yield_D > 0 else 0
+        fitted_pred = (yield_B * scale_B["value"] * yield_C * scale_C["value"] / 
+                      (yield_D * scale_D["value"])) if yield_D > 0 else 0
+        predicted_true = yield_A
+        formula_str = "B×C/D"
+        
+    elif predicted_region == "B": 
+        # B = A * D / C
+        naive_pred = (yield_A * yield_D / yield_C) if yield_C > 0 else 0
+        fitted_pred = (yield_A * scale_A["value"] * yield_D * scale_D["value"] / 
+                      (yield_C * scale_C["value"])) if yield_C > 0 else 0
+        predicted_true = yield_B
+        formula_str = "A×D/C"
+        
+    elif predicted_region == "C":
+        # C = A * D / B  
+        naive_pred = (yield_A * yield_D / yield_B) if yield_B > 0 else 0
+        fitted_pred = (yield_A * scale_A["value"] * yield_D * scale_D["value"] / 
+                      (yield_B * scale_B["value"])) if yield_B > 0 else 0
+        predicted_true = yield_C
+        formula_str = "A×D/B"
+        
+    elif predicted_region == "D":
+        # D = B * C / A
+        naive_pred = (yield_B * yield_C / yield_A) if yield_A > 0 else 0
+        fitted_pred = (yield_B * scale_B["value"] * yield_C * scale_C["value"] / 
+                      (yield_A * scale_A["value"])) if yield_A > 0 else 0
+        predicted_true = yield_D
+        formula_str = "B×C/A"
+    else:
+        return None
     
-    # Calculate ABCD predictions: Predicted = Control1 * Control2 / Control3
-    # (The specific formula depends on which region is predicted)
-    naive_pred = (yield_ctrl1 * yield_ctrl2 / yield_ctrl3) if yield_ctrl3 > 0 else 0
-    fitted_pred = (yield_ctrl1 * scale_ctrl1["value"] * yield_ctrl2 * scale_ctrl2["value"] / 
-                   (yield_ctrl3 * scale_ctrl3["value"])) if yield_ctrl3 > 0 else 0
+    # Calculate closure metrics
+    closure_ratio = fitted_pred / predicted_true if predicted_true > 0 else 0
+    naive_ratio = naive_pred / predicted_true if predicted_true > 0 else 0
     
-    # Calculate closure metrics (how well does prediction match truth)
-    closure_ratio = fitted_pred / yield_predicted_true if yield_predicted_true > 0 else 0
-    naive_ratio = naive_pred / yield_predicted_true if yield_predicted_true > 0 else 0
-    
-    # Calculate pull (fitted prediction vs true yield, in units of statistical uncertainty)
-    stat_error_predicted = sqrt(yield_predicted_true) if yield_predicted_true > 0 else 1
-    pull = (fitted_pred - yield_predicted_true) / stat_error_predicted
+    # Calculate pull
+    stat_error = sqrt(predicted_true) if predicted_true > 0 else 1
+    pull = (fitted_pred - predicted_true) / stat_error
     
     return {
         "regions": regions,
         "yields": {
-            "predicted_true": yield_predicted_true,  # TRUE yield in predicted region
-            "control_1": yield_ctrl1,
-            "control_2": yield_ctrl2, 
-            "control_3": yield_ctrl3
+            "A": yield_A,
+            "B": yield_B,
+            "C": yield_C,
+            "D": yield_D,
+            "predicted_true": predicted_true
         },
         "scale_factors": {
-            "predicted": scale_predicted,
-            "control_1": scale_ctrl1,
-            "control_2": scale_ctrl2,
-            "control_3": scale_ctrl3
+            "A": scale_A,
+            "B": scale_B, 
+            "C": scale_C,
+            "D": scale_D
         },
         "predictions": {
             "naive": naive_pred,
-            "fitted": fitted_pred
+            "fitted": fitted_pred,
+            "formula": formula_str
         },
         "closure_metrics": {
             "closure_ratio": closure_ratio,
             "naive_ratio": naive_ratio,
             "pull": pull,
-            "stat_error": stat_error_predicted
+            "stat_error": stat_error
         }
     }
 
@@ -205,6 +271,8 @@ def print_closure_summary(closure_data, signal_name):
         return
     
     regions = closure_data["regions"]
+    abcd_mapping = regions["abcd_mapping"]
+    predicted_region = regions["predicted_region"]
     yields = closure_data["yields"]
     scales = closure_data["scale_factors"]
     preds = closure_data["predictions"]
@@ -215,27 +283,27 @@ def print_closure_summary(closure_data, signal_name):
     print(f"{'='*60}")
     
     print(f"\n📊 REGION MAPPING:")
-    print(f"   Predicted region: {regions['predicted']}")
-    print(f"   Control region 1: {regions['control_1']}")
-    print(f"   Control region 2: {regions['control_2']}")
-    print(f"   Control region 3: {regions['control_3']}")
+    print(f"   Region A: {abcd_mapping['A']} {'← PREDICTED' if predicted_region == 'A' else ''}")
+    print(f"   Region B: {abcd_mapping['B']} {'← PREDICTED' if predicted_region == 'B' else ''}")  
+    print(f"   Region C: {abcd_mapping['C']} {'← PREDICTED' if predicted_region == 'C' else ''}")
+    print(f"   Region D: {abcd_mapping['D']} {'← PREDICTED' if predicted_region == 'D' else ''}")
     
     print(f"\n📈 TRUE YIELDS:")
-    print(f"   Predicted (true): {yields['predicted_true']:8.1f}")
-    print(f"   Control 1:        {yields['control_1']:8.1f}")
-    print(f"   Control 2:        {yields['control_2']:8.1f}")
-    print(f"   Control 3:        {yields['control_3']:8.1f}")
+    print(f"   Region A: {yields['A']:8.1f}")
+    print(f"   Region B: {yields['B']:8.1f}")
+    print(f"   Region C: {yields['C']:8.1f}")
+    print(f"   Region D: {yields['D']:8.1f}")
     
     print(f"\n⚖️  FITTED SCALE FACTORS:")
-    print(f"   Predicted: {scales['predicted']['value']:6.3f} ± {scales['predicted']['error']:5.3f}")
-    print(f"   Control 1: {scales['control_1']['value']:6.3f} ± {scales['control_1']['error']:5.3f}")
-    print(f"   Control 2: {scales['control_2']['value']:6.3f} ± {scales['control_2']['error']:5.3f}")
-    print(f"   Control 3: {scales['control_3']['value']:6.3f} ± {scales['control_3']['error']:5.3f}")
+    print(f"   Region A: {scales['A']['value']:6.3f} ± {scales['A']['error']:5.3f}")
+    print(f"   Region B: {scales['B']['value']:6.3f} ± {scales['B']['error']:5.3f}")
+    print(f"   Region C: {scales['C']['value']:6.3f} ± {scales['C']['error']:5.3f}")
+    print(f"   Region D: {scales['D']['value']:6.3f} ± {scales['D']['error']:5.3f}")
     
     print(f"\n🎯 ABCD PREDICTIONS:")
-    print(f"   Naive (C1×C2/C3):      {preds['naive']:8.1f}")
+    print(f"   Naive ({preds['formula']}):       {preds['naive']:8.1f}")
     print(f"   Fitted (scaled):       {preds['fitted']:8.1f}")
-    print(f"   True (predicted):      {yields['predicted_true']:8.1f}")
+    print(f"   True ({predicted_region}):              {yields['predicted_true']:8.1f}")
     
     print(f"\n📏 CLOSURE PERFORMANCE:")
     print(f"   Naive ratio (pred/true):   {metrics['naive_ratio']:6.3f}")
