@@ -761,6 +761,8 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
     std::string bins_key = "systematics." + category + ".bins";
     std::string processes_key = "systematics." + category + ".processes";
     
+    std::cout << "DEBUG: Looking for keys - type: " << type_key << ", bins: " << bins_key << ", processes: " << processes_key << std::endl;
+    
     if (parser.values.count(type_key)) {
         common_type = parser.values.at(type_key);
         std::cout << "DEBUG: Found type: " << common_type << std::endl;
@@ -778,11 +780,15 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
     if (parser.lists.count(bins_key)) {
         bins_list = parser.lists.at(bins_key);
         std::cout << "DEBUG: Found " << bins_list.size() << " bins" << std::endl;
+    } else {
+        std::cout << "DEBUG: No bins list found for key: " << bins_key << std::endl;
     }
     
     if (parser.lists.count(processes_key)) {
         processes_list = parser.lists.at(processes_key);
         std::cout << "DEBUG: Found " << processes_list.size() << " processes" << std::endl;
+    } else {
+        std::cout << "DEBUG: No processes list found for key: " << processes_key << std::endl;
     }
     
     // Create systematics - one for each name
