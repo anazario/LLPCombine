@@ -111,6 +111,13 @@ def format_range_string(low, high):
     else:
         return f"{low}-{high}"
 
+def format_cuts_as_yaml(cuts_list):
+    """Format cuts list as proper YAML list with indentation"""
+    formatted_cuts = []
+    for cut in cuts_list:
+        formatted_cuts.append(f'      - "{cut}"')
+    return "\n".join(formatted_cuts)
+
 def main():
     parser = argparse.ArgumentParser(description="Generate ABCD configuration from template")
     
@@ -252,10 +259,10 @@ def main():
         "REGION_B_DESC": region_descs[regions["region_B"]],
         "REGION_C_DESC": region_descs[regions["region_C"]],
         "REGION_D_DESC": region_descs[regions["region_D"]],
-        "REGION_A_CUTS": json.dumps(region_cuts[regions["region_A"]]),
-        "REGION_B_CUTS": json.dumps(region_cuts[regions["region_B"]]),
-        "REGION_C_CUTS": json.dumps(region_cuts[regions["region_C"]]),
-        "REGION_D_CUTS": json.dumps(region_cuts[regions["region_D"]]),
+        "REGION_A_CUTS": format_cuts_as_yaml(region_cuts[regions["region_A"]]),
+        "REGION_B_CUTS": format_cuts_as_yaml(region_cuts[regions["region_B"]]),
+        "REGION_C_CUTS": format_cuts_as_yaml(region_cuts[regions["region_C"]]),
+        "REGION_D_CUTS": format_cuts_as_yaml(region_cuts[regions["region_D"]]),
         "SYSTEMATICS_BLOCK": yaml.dump(systematics),
         "SYST_PREFIX": syst_prefix,
         "PRECISION_VALUE": args.precision_value,

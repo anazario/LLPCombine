@@ -351,10 +351,14 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
                 size_t dot_pos = remainder.find('.');
                 
                 if (dot_pos != std::string::npos) {
-                    // Key like "bins.single_bin.cuts" - not used in our format
-                    continue;
+                    // Key like "bins.nLeptonic_Rs_A.cuts" - this IS our format!
+                    if (full_key.substr(full_key.length() - 5) == ".cuts") {
+                        bin_name = remainder.substr(0, dot_pos);  // Extract bin name before .cuts
+                    } else {
+                        continue;
+                    }
                 } else {
-                    // Key like "bins.single_bin" - this is our cuts list
+                    // Key like "bins.single_bin" - this would be direct cuts list (old format)
                     bin_name = remainder;
                 }
             }

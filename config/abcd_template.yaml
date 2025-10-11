@@ -29,19 +29,23 @@ abcd:
 bins:
   ${REGION_A_NAME}:
     description: "${REGION_A_DESC}"
-    cuts: ${REGION_A_CUTS}
+    cuts:
+${REGION_A_CUTS}
     
   ${REGION_B_NAME}:
     description: "${REGION_B_DESC}" 
-    cuts: ${REGION_B_CUTS}
+    cuts:
+${REGION_B_CUTS}
     
   ${REGION_C_NAME}:
     description: "${REGION_C_DESC}"
-    cuts: ${REGION_C_CUTS}
+    cuts:
+${REGION_C_CUTS}
     
   ${REGION_D_NAME}:
     description: "${REGION_D_DESC}"
-    cuts: ${REGION_D_CUTS}
+    cuts:
+${REGION_D_CUTS}
 
 # Flexible systematics - completely parameterized
 systematics:
