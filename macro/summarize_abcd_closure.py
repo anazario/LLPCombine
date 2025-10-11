@@ -100,6 +100,9 @@ def extract_abcd_info(fit_file, verbose=False):
     fit_b = f.Get("fit_b")
     if not fit_b:
         print(f"Error: No fit_b result found in {fit_file}")
+        print("Available objects in ROOT file:")
+        for key in f.GetListOfKeys():
+            print(f"  - {key.GetName()} ({key.GetClassName()})")
         f.Close()
         return None
     
