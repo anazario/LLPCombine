@@ -754,14 +754,9 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
     // Get common properties for this category
     std::string common_type = "";
     double common_value = 1.0;
-    std::vector<std::string> bins_list, processes_list;
     
     std::string type_key = "systematics." + category + ".type";
     std::string value_key = "systematics." + category + ".value";
-    std::string bins_key = "systematics." + category + ".bins";
-    std::string processes_key = "systematics." + category + ".processes";
-    
-    std::cout << "DEBUG: Looking for keys - type: " << type_key << ", bins: " << bins_key << ", processes: " << processes_key << std::endl;
     
     if (parser.values.count(type_key)) {
         common_type = parser.values.at(type_key);
@@ -777,19 +772,31 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
         std::cout << "DEBUG: Found value: " << common_value << std::endl;
     }
     
-    if (parser.lists.count(bins_key)) {
-        bins_list = parser.lists.at(bins_key);
-        std::cout << "DEBUG: Found " << bins_list.size() << " bins" << std::endl;
-    } else {
-        std::cout << "DEBUG: No bins list found for key: " << bins_key << std::endl;
+    // Extract bins and processes from the combined systematics list
+    // The YAML structure puts everything in order: [names..., bins..., processes...]
+    const auto& all_items = parser.lists.at("systematics");
+    
+    std::vector<std::string> bins_list, processes_list;
+    
+    // For ABCD systematics: bins are at positions 4-7, processes at 8-11
+    // For precision systematics: bins are at positions 15-17, processes at 18-20
+    if (category == "abcd_systematics") {
+        for (int i = 4; i < 8 && i < (int)all_items.size(); i++) {
+            bins_list.push_back(all_items[i]);
+        }
+        for (int i = 8; i < 12 && i < (int)all_items.size(); i++) {
+            processes_list.push_back(all_items[i]);
+        }
+    } else if (category == "precision_systematics") {
+        for (int i = 15; i < 18 && i < (int)all_items.size(); i++) {
+            bins_list.push_back(all_items[i]);
+        }
+        for (int i = 18; i < 21 && i < (int)all_items.size(); i++) {
+            processes_list.push_back(all_items[i]);
+        }
     }
     
-    if (parser.lists.count(processes_key)) {
-        processes_list = parser.lists.at(processes_key);
-        std::cout << "DEBUG: Found " << processes_list.size() << " processes" << std::endl;
-    } else {
-        std::cout << "DEBUG: No processes list found for key: " << processes_key << std::endl;
-    }
+    std::cout << "DEBUG: Extracted " << bins_list.size() << " bins and " << processes_list.size() << " processes for " << category << std::endl;
     
     // Create systematics - one for each name
     for (size_t i = 0; i < names.size(); i++) {
