@@ -138,6 +138,9 @@ def extract_abcd_info(fit_file, verbose=False):
         print("INFO: Attempting to extract observed data from datacard...")
         # Try common datacard names
         fit_dir = os.path.dirname(fit_file)
+        print(f"DEBUG: Looking for datacard in directory: {fit_dir}")
+        print(f"DEBUG: Files in directory: {os.listdir(fit_dir)}")
+        
         for datacard_name in ["datacard.txt", "combine_datacard.txt", "datacard_*.txt"]:
             if "*" in datacard_name:
                 import glob
