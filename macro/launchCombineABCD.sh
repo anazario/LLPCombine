@@ -150,7 +150,7 @@ if [ "$t2w_only" = false ]; then
         echo "Running: combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties ${toy_opts} -d ${dcdir}/*/ws.root --there --parallel ${jobs} ${verbose_opts}"
     fi
     
-    combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties ${toy_opts} -d ${dcdir}/*/ws.root --there --parallel ${jobs} ${verbose_opts}
+    combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties --robustFit 1 ${toy_opts} -d ${dcdir}/*/ws.root --there --parallel ${jobs} ${verbose_opts}
     
     if [ $? -ne 0 ]; then
         echo "Error: Fit diagnostics failed"
