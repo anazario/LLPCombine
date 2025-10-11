@@ -18,66 +18,56 @@ from string import Template
 def create_abcd_systematics_auto(syst_prefix, precision_value):
     """Create ABCD systematics using auto placeholders (works for any predicted region)"""
     
-    systematics = {
-        "abcd_systematics": [
-            # Rate parameters for control regions (auto-mapped at runtime)
-            {
-                "name": f"scale_{syst_prefix}_B",
-                "type": "rateParam",
-                "value": 1.0,
-                "bins": ["auto_control_1"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": f"scale_{syst_prefix}_C", 
-                "type": "rateParam",
-                "value": 1.0,
-                "bins": ["auto_control_2"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": f"scale_{syst_prefix}_D",
-                "type": "rateParam", 
-                "value": 1.0,
-                "bins": ["auto_control_3"],
-                "processes": ["backgrounds"]
-            },
-            # ABCD constraint (formula auto-generated based on predicted region)
-            {
-                "name": f"abcd_{syst_prefix}_closure_constraint",
-                "type": "rateParam",
-                "formula": "auto",
-                "bins": ["auto_predicted"],
-                "processes": ["backgrounds"]
-            }
-        ],
-        
-        "precision_systematics": [
-            {
-                "name": f"{syst_prefix}_precision_B",
-                "type": "lnN",
-                "value": precision_value,
-                "bins": ["auto_control_1"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": f"{syst_prefix}_precision_C",
-                "type": "lnN", 
-                "value": precision_value,
-                "bins": ["auto_control_2"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": f"{syst_prefix}_precision_D",
-                "type": "lnN",
-                "value": precision_value, 
-                "bins": ["auto_control_3"],
-                "processes": ["backgrounds"]
-            }
-        ]
-    }
+    # Create systematics in the format that SimpleYAMLParser can handle
+    # Use manual YAML string formatting to match the working config exactly
+    systematics_yaml = f"""abcd_systematics:
+    # Rate parameters for control regions (auto-mapped at runtime)
+    - name: "scale_{syst_prefix}_B"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+      
+    - name: "scale_{syst_prefix}_C"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+      
+    - name: "scale_{syst_prefix}_D"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_3"]
+      processes: ["backgrounds"]
+
+    # ABCD constraint (formula auto-generated based on predicted region)
+    - name: "abcd_{syst_prefix}_closure_constraint"
+      type: "rateParam"
+      formula: "auto"
+      bins: ["auto_predicted"]
+      processes: ["backgrounds"]
+
+  precision_systematics:
+    # Precision systematics for control regions
+    - name: "{syst_prefix}_precision_B"
+      type: "lnN"
+      value: {precision_value}
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+      
+    - name: "{syst_prefix}_precision_C"
+      type: "lnN"
+      value: {precision_value}
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+      
+    - name: "{syst_prefix}_precision_D"
+      type: "lnN"
+      value: {precision_value}
+      bins: ["auto_control_3"]
+      processes: ["backgrounds"]"""
     
-    return systematics
+    return systematics_yaml
 
 def create_cuts(sv_type, var1_name, var1_low, var1_high, var2_name, var2_low, var2_high, 
                 dxysig_low, dxysig_high, region_type):
@@ -283,14 +273,21 @@ def main():
     
     template = Template(template_content)
     
-    # Handle flat systematics format
-    systematics_template = Template(yaml.dump(systematics, default_flow_style=False, indent=2))
-    systematics_substituted = systematics_template.safe_substitute(substitutions)
-    
-    # Indent the systematics block properly for YAML
-    systematics_indented = "\n".join("  " + line if line.strip() else line 
-                                    for line in systematics_substituted.split("\n"))
-    substitutions["SYSTEMATICS_BLOCK"] = systematics_indented
+    # Handle systematics format
+    if isinstance(systematics, str):
+        # Raw YAML string - just substitute and indent
+        systematics_template = Template(systematics)
+        systematics_substituted = systematics_template.safe_substitute(substitutions)
+        systematics_indented = "\n".join("  " + line if line.strip() else line 
+                                        for line in systematics_substituted.split("\n"))
+        substitutions["SYSTEMATICS_BLOCK"] = systematics_indented
+    else:
+        # Dictionary format
+        systematics_template = Template(yaml.dump(systematics, default_flow_style=False, indent=2))
+        systematics_substituted = systematics_template.safe_substitute(substitutions)
+        systematics_indented = "\n".join("  " + line if line.strip() else line 
+                                        for line in systematics_substituted.split("\n"))
+        substitutions["SYSTEMATICS_BLOCK"] = systematics_indented
     
     output_content = template.safe_substitute(substitutions)
     
