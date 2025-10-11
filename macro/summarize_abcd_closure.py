@@ -87,25 +87,22 @@ def identify_abcd_regions(data_yields, params):
             if bin_name in data_yields:
                 scale_bins.append(bin_name)
     
-    # Find which bin has the ABCD formula constraint (the predicted region)
+    # Find the predicted bin by looking for the one with error = 0 (fixed by formula)
     predicted_bin = None
     for param_name in params:
-        if param_name.startswith("scale_") and "formula" in str(params[param_name]):
-            predicted_bin = param_name.replace("scale_", "")
-            break
-    
-    # If we can't find the predicted bin from formula, use the bin with different rate pattern
-    if not predicted_bin and len(scale_bins) >= 4:
-        # The predicted bin is the one that doesn't have a simple rate param
-        # Check which bin is calculated from others
-        for bin_name in data_yields.keys():
-            if bin_name not in scale_bins:
+        if param_name.startswith("scale_"):
+            bin_name = param_name.replace("scale_", "")
+            if bin_name in data_yields and params[param_name]["error"] == 0.0:
                 predicted_bin = bin_name
                 break
     
-    if not predicted_bin and scale_bins:
-        # Last resort: just pick the first bin as predicted
-        predicted_bin = list(data_yields.keys())[0]
+    # If still not found, look for the bin that's NOT in the simple scale parameters
+    if not predicted_bin:
+        for bin_name in data_yields.keys():
+            scale_param = f"scale_{bin_name}"
+            if scale_param not in params or params[scale_param]["error"] == 0.0:
+                predicted_bin = bin_name
+                break
     
     # Assign regions
     all_bins = list(data_yields.keys())
