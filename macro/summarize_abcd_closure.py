@@ -76,25 +76,10 @@ def extract_abcd_info(fit_file):
     }
 
 def identify_abcd_regions(data_yields, params):
-    """Identify which bins correspond to ABCD regions A, B, C, D based on naming convention"""
-    # For this specific analysis, use the naming convention to identify regions
+    """Identify which bins correspond to ABCD regions A, B, C, D based on scale parameters"""
     region_mapping = {}
     
-    for bin_name in data_yields.keys():
-        if "MsHigh_dxySigLow" in bin_name:
-            region_mapping["A"] = bin_name  # Region A: Ms high, dxySig low
-        elif "MsHigh_dxySigHigh" in bin_name:
-            region_mapping["B"] = bin_name  # Region B: Ms high, dxySig high  
-        elif "MsLow_dxySigLow" in bin_name:
-            region_mapping["C"] = bin_name  # Region C: Ms low, dxySig low
-        elif "MsLow_dxySigHigh" in bin_name:
-            region_mapping["D"] = bin_name  # Region D: Ms low, dxySig high
-    
-    # Verify we have all 4 regions
-    if len(region_mapping) == 4 and all(key in region_mapping for key in ["A", "B", "C", "D"]):
-        return region_mapping
-    
-    # Fallback to the old method if naming convention doesn't work
+    # Find all bins that have scale parameters
     scale_bins = []
     for param_name in params:
         if param_name.startswith("scale_") and param_name != "scale_r":
@@ -102,23 +87,37 @@ def identify_abcd_regions(data_yields, params):
             if bin_name in data_yields:
                 scale_bins.append(bin_name)
     
-    all_bins = set(data_yields.keys())
-    control_bins = set(scale_bins)
-    predicted_bins = all_bins - control_bins
+    # Find which bin has the ABCD formula constraint (the predicted region)
+    predicted_bin = None
+    for param_name in params:
+        if param_name.startswith("scale_") and "formula" in str(params[param_name]):
+            predicted_bin = param_name.replace("scale_", "")
+            break
     
-    if len(predicted_bins) == 1:
-        region_A = list(predicted_bins)[0]
-        regions_BCD = sorted(list(control_bins))
-        
-        if len(regions_BCD) >= 3:
-            return {
-                "A": region_A,
-                "B": regions_BCD[0], 
-                "C": regions_BCD[1],
-                "D": regions_BCD[2]
-            }
+    # If we can't find the predicted bin from formula, use the bin with different rate pattern
+    if not predicted_bin and len(scale_bins) >= 4:
+        # The predicted bin is the one that doesn't have a simple rate param
+        # Check which bin is calculated from others
+        for bin_name in data_yields.keys():
+            if bin_name not in scale_bins:
+                predicted_bin = bin_name
+                break
     
-    return None
+    if not predicted_bin and scale_bins:
+        # Last resort: just pick the first bin as predicted
+        predicted_bin = list(data_yields.keys())[0]
+    
+    # Assign regions
+    all_bins = list(data_yields.keys())
+    if predicted_bin:
+        region_mapping["A"] = predicted_bin  # A is always the predicted region
+        control_bins = [b for b in all_bins if b != predicted_bin]
+        if len(control_bins) >= 3:
+            region_mapping["B"] = control_bins[0]
+            region_mapping["C"] = control_bins[1] 
+            region_mapping["D"] = control_bins[2]
+    
+    return region_mapping
 
 def calculate_closure_metrics(abcd_info):
     """Calculate ABCD closure metrics"""
@@ -130,39 +129,41 @@ def calculate_closure_metrics(abcd_info):
     if not regions:
         return None
     
-    # Get observed yields
-    yield_A_obs = data_yields.get(regions["A"], 0)
+    # Get yields - Region A is the PREDICTED region, B/C/D are control regions  
+    yield_A_true = data_yields.get(regions["A"], 0)  # TRUE yield in predicted region
     yield_B = data_yields.get(regions["B"], 0)
     yield_C = data_yields.get(regions["C"], 0) 
     yield_D = data_yields.get(regions["D"], 0)
     
     # Get scale factors from fit
+    scale_A = params.get(f"scale_{regions['A']}", {"value": 1.0, "error": 0.0})
     scale_B = params.get(f"scale_{regions['B']}", {"value": 1.0, "error": 0.0})
     scale_C = params.get(f"scale_{regions['C']}", {"value": 1.0, "error": 0.0})
     scale_D = params.get(f"scale_{regions['D']}", {"value": 1.0, "error": 0.0})
     
-    # Calculate predictions
+    # Calculate ABCD predictions: A = B * C / D
     naive_pred = (yield_B * yield_C / yield_D) if yield_D > 0 else 0
     fitted_pred = (yield_B * scale_B["value"] * yield_C * scale_C["value"] / 
                    (yield_D * scale_D["value"])) if yield_D > 0 else 0
     
-    # Calculate closure metrics
-    closure_ratio = fitted_pred / yield_A_obs if yield_A_obs > 0 else 0
-    naive_ratio = naive_pred / yield_A_obs if yield_A_obs > 0 else 0
+    # Calculate closure metrics (how well does prediction match truth)
+    closure_ratio = fitted_pred / yield_A_true if yield_A_true > 0 else 0
+    naive_ratio = naive_pred / yield_A_true if yield_A_true > 0 else 0
     
-    # Calculate pull (fitted prediction vs observed, in units of statistical uncertainty)
-    stat_error_A = sqrt(yield_A_obs) if yield_A_obs > 0 else 1
-    pull = (fitted_pred - yield_A_obs) / stat_error_A
+    # Calculate pull (fitted prediction vs true yield, in units of statistical uncertainty)
+    stat_error_A = sqrt(yield_A_true) if yield_A_true > 0 else 1
+    pull = (fitted_pred - yield_A_true) / stat_error_A
     
     return {
         "regions": regions,
         "yields": {
-            "A_observed": yield_A_obs,
+            "A_true": yield_A_true,  # TRUE yield in predicted region
             "B": yield_B,
             "C": yield_C, 
             "D": yield_D
         },
         "scale_factors": {
+            "A": scale_A,
             "B": scale_B,
             "C": scale_C,
             "D": scale_D
@@ -201,8 +202,8 @@ def print_closure_summary(closure_data, signal_name):
     print(f"   Region C (control):   {regions['C']}")
     print(f"   Region D (control):   {regions['D']}")
     
-    print(f"\n📈 OBSERVED YIELDS:")
-    print(f"   A (observed):  {yields['A_observed']:8.1f}")
+    print(f"\n📈 TRUE YIELDS:")
+    print(f"   A (true):      {yields['A_true']:8.1f}")
     print(f"   B (control):   {yields['B']:8.1f}")
     print(f"   C (control):   {yields['C']:8.1f}")
     print(f"   D (control):   {yields['D']:8.1f}")
@@ -215,13 +216,13 @@ def print_closure_summary(closure_data, signal_name):
     print(f"\n🎯 ABCD PREDICTIONS:")
     print(f"   Naive (B×C/D):         {preds['naive']:8.1f}")
     print(f"   Fitted (scaled):       {preds['fitted']:8.1f}")
-    print(f"   Observed (A):          {yields['A_observed']:8.1f}")
+    print(f"   True (A):              {yields['A_true']:8.1f}")
     
     print(f"\n📏 CLOSURE PERFORMANCE:")
-    print(f"   Naive ratio (pred/obs):    {metrics['naive_ratio']:6.3f}")
-    print(f"   Fitted ratio (pred/obs):   {metrics['closure_ratio']:6.3f}")
+    print(f"   Naive ratio (pred/true):   {metrics['naive_ratio']:6.3f}")
+    print(f"   Fitted ratio (pred/true):  {metrics['closure_ratio']:6.3f}")
     print(f"   Statistical error on A:    {metrics['stat_error']:6.1f}")
-    print(f"   Pull (fitted-obs)/σ:       {metrics['pull']:+6.2f}")
+    print(f"   Pull (fitted-true)/σ:      {metrics['pull']:+6.2f}")
     
     # Interpret results
     print(f"\n🔍 INTERPRETATION:")
