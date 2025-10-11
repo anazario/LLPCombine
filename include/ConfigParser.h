@@ -112,6 +112,7 @@ public:
     bool ValidateABCDConfig() const;
     void ParseSystematics(const SimpleYAMLParser& parser);
     void ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics);
+    void ParseSystematicCategoryNested(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics);
     
 private:
     AnalysisConfig config_;

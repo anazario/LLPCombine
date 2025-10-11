@@ -4,6 +4,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cstring>
+#include <set>
 
 // Simple YAML parser implementation
 // For production use, consider yaml-cpp library
@@ -543,14 +544,11 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
         }
     }
     
-    // Parse ABCD systematics
-    ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
-    
-    // Parse precision systematics  
-    ParseSystematicCategory(parser, "systematics.precision_systematics", config_.precision_systematics);
-    
-    // Parse experimental systematics
-    ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
+    // Parse nested YAML structure (modern format used by all existing configs)
+    ParseSystematicCategoryNested(parser, "systematics.abcd_systematics", config_.abcd_systematics);
+    ParseSystematicCategoryNested(parser, "systematics.precision_systematics", config_.precision_systematics);
+    ParseSystematicCategoryNested(parser, "systematics.experimental_systematics", config_.experimental_systematics);
+    ParseSystematicCategoryNested(parser, "systematics.experimental", config_.experimental_systematics);
     
     std::cout << "DEBUG ParseSystematics: Complete. Found " << config_.abcd_systematics.size() << " ABCD, " 
               << config_.precision_systematics.size() << " precision, " << config_.experimental_systematics.size() << " experimental" << std::endl;
@@ -607,5 +605,79 @@ void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const
         }
         
         systematics.push_back(syst);
+    }
+}
+
+void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
+    std::cout << "DEBUG ParseSystematicCategoryNested: Processing " << category_prefix << std::endl;
+    
+    // Look for individual systematic entries like "systematics.abcd_systematics.0.name", "systematics.abcd_systematics.1.name", etc.
+    std::set<int> systematic_indices;
+    
+    // First pass: find all systematic indices
+    for (const auto& pair : parser.values) {
+        if (pair.first.find(category_prefix + ".") == 0) {
+            std::string remainder = pair.first.substr(category_prefix.length() + 1);
+            size_t dot_pos = remainder.find('.');
+            if (dot_pos != std::string::npos) {
+                std::string index_str = remainder.substr(0, dot_pos);
+                try {
+                    int index = std::stoi(index_str);
+                    systematic_indices.insert(index);
+                } catch (...) {
+                    // Not a numeric index, skip
+                }
+            }
+        }
+    }
+    
+    std::cout << "DEBUG: Found " << systematic_indices.size() << " systematic indices for " << category_prefix << std::endl;
+    
+    // Second pass: parse each systematic
+    for (int index : systematic_indices) {
+        SystematicConfig syst;
+        std::string prefix = category_prefix + "." + std::to_string(index) + ".";
+        
+        // Parse name
+        if (parser.values.count(prefix + "name")) {
+            syst.name = parser.values.at(prefix + "name");
+        }
+        
+        // Parse type
+        if (parser.values.count(prefix + "type")) {
+            syst.type = parser.values.at(prefix + "type");
+        }
+        
+        // Parse value
+        if (parser.values.count(prefix + "value")) {
+            try {
+                syst.value = std::stod(parser.values.at(prefix + "value"));
+            } catch (...) {
+                syst.value = 1.0;
+            }
+        }
+        
+        // Parse formula
+        if (parser.values.count(prefix + "formula")) {
+            syst.formula = parser.values.at(prefix + "formula");
+        }
+        
+        // Parse bins list
+        if (parser.lists.count(prefix + "bins")) {
+            syst.bins = parser.lists.at(prefix + "bins");
+        }
+        
+        // Parse processes list
+        if (parser.lists.count(prefix + "processes")) {
+            syst.processes = parser.lists.at(prefix + "processes");
+        }
+        
+        std::cout << "DEBUG: Parsed systematic " << index << ": name=" << syst.name 
+                  << ", type=" << syst.type << ", bins=" << syst.bins.size() 
+                  << ", processes=" << syst.processes.size() << std::endl;
+        
+        if (!syst.name.empty() && !syst.type.empty()) {
+            systematics.push_back(syst);
+        }
     }
 }
