@@ -141,7 +141,7 @@ def extract_abcd_info(fit_file, verbose=False):
         print(f"DEBUG: Looking for datacard in directory: {fit_dir}")
         print(f"DEBUG: Files in directory: {os.listdir(fit_dir)}")
         
-        for datacard_name in ["datacard.txt", "combine_datacard.txt", "datacard_*.txt"]:
+        for datacard_name in ["datacard.txt", "combine_datacard.txt", "*.txt"]:
             if "*" in datacard_name:
                 import glob
                 matches = glob.glob(os.path.join(fit_dir, datacard_name))
