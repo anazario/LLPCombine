@@ -544,9 +544,14 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
         }
     }
     
-    // Parse flat YAML structure (what SimpleYAMLParser actually supports)
-    // The parser puts everything in "systematics" list, so we need to manually separate by category
-    ParseSystematicsFromCombinedList(parser);
+    // Parse ABCD systematics
+    ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
+    
+    // Parse precision systematics  
+    ParseSystematicCategory(parser, "systematics.precision_systematics", config_.precision_systematics);
+    
+    // Parse experimental systematics
+    ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
     
     std::cout << "DEBUG ParseSystematics: Complete. Found " << config_.abcd_systematics.size() << " ABCD, " 
               << config_.precision_systematics.size() << " precision, " << config_.experimental_systematics.size() << " experimental" << std::endl;
@@ -772,28 +777,18 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
         std::cout << "DEBUG: Found value: " << common_value << std::endl;
     }
     
-    // Extract bins and processes from the combined systematics list
-    // The YAML structure puts everything in order: [names..., bins..., processes...]
-    const auto& all_items = parser.lists.at("systematics");
-    
+    // Get bins and processes from proper keys
     std::vector<std::string> bins_list, processes_list;
     
-    // For ABCD systematics: bins are at positions 4-7, processes at 8-11
-    // For precision systematics: bins are at positions 15-17, processes at 18-20
-    if (category == "abcd_systematics") {
-        for (int i = 4; i < 8 && i < (int)all_items.size(); i++) {
-            bins_list.push_back(all_items[i]);
-        }
-        for (int i = 8; i < 12 && i < (int)all_items.size(); i++) {
-            processes_list.push_back(all_items[i]);
-        }
-    } else if (category == "precision_systematics") {
-        for (int i = 15; i < 18 && i < (int)all_items.size(); i++) {
-            bins_list.push_back(all_items[i]);
-        }
-        for (int i = 18; i < 21 && i < (int)all_items.size(); i++) {
-            processes_list.push_back(all_items[i]);
-        }
+    std::string bins_key = "systematics." + category + ".bins";
+    std::string processes_key = "systematics." + category + ".processes";
+    
+    if (parser.lists.count(bins_key)) {
+        bins_list = parser.lists.at(bins_key);
+    }
+    
+    if (parser.lists.count(processes_key)) {
+        processes_list = parser.lists.at(processes_key);
     }
     
     std::cout << "DEBUG: Extracted " << bins_list.size() << " bins and " << processes_list.size() << " processes for " << category << std::endl;
