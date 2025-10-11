@@ -1,0 +1,53 @@
+# ABCD Parametrized Template Configuration
+# Use with generate_abcd_config.py to create specific configurations
+
+analysis:
+  method: "ABCD"
+  name: "${ANALYSIS_NAME}"
+  luminosity: ${LUMINOSITY}
+  output_json: "${OUTPUT_JSON}"
+  output_dir: "${OUTPUT_DIR}"
+
+samples:
+  backgrounds: ${BACKGROUNDS}
+  signals: ${SIGNALS}
+  signal_points: ${SIGNAL_POINTS}
+  data: ${DATA}
+
+# ABCD regions - predicted region will be determined by PREDICTED_REGION parameter
+abcd:
+  regions:
+    region_A: "${REGION_A_NAME}"
+    region_B: "${REGION_B_NAME}"
+    region_C: "${REGION_C_NAME}"
+    region_D: "${REGION_D_NAME}"
+  predicted_region: "${PREDICTED_REGION}"
+  formula: "${ABCD_FORMULA}"
+  generate_datacards: ${GENERATE_DATACARDS}
+
+# Define all 4 ABCD regions with parameterized cuts
+bins:
+  ${REGION_A_NAME}:
+    description: "${REGION_A_DESC}"
+    cuts: ${REGION_A_CUTS}
+    
+  ${REGION_B_NAME}:
+    description: "${REGION_B_DESC}" 
+    cuts: ${REGION_B_CUTS}
+    
+  ${REGION_C_NAME}:
+    description: "${REGION_C_DESC}"
+    cuts: ${REGION_C_CUTS}
+    
+  ${REGION_D_NAME}:
+    description: "${REGION_D_DESC}"
+    cuts: ${REGION_D_CUTS}
+
+# Flexible systematics - completely parameterized
+systematics: ${SYSTEMATICS_BLOCK}
+
+# Runtime options
+options:
+  verbosity: ${VERBOSITY}
+  parallel: ${PARALLEL}
+  dry_run: ${DRY_RUN}
