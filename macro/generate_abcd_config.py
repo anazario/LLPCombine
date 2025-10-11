@@ -15,50 +15,69 @@ import os
 import sys
 from string import Template
 
-def create_standard_systematics_flat():
-    """Create standard ABCD systematics in flat format for SimpleYAMLParser"""
-    return {
-        # ABCD systematics - flat format that ConfigParser expects
+def create_abcd_systematics_auto(syst_prefix, precision_value):
+    """Create ABCD systematics using auto placeholders (works for any predicted region)"""
+    
+    systematics = {
         "abcd_systematics": [
-            "scale_${SYST_PREFIX}_B",
-            "scale_${SYST_PREFIX}_C", 
-            "scale_${SYST_PREFIX}_D",
-            "abcd_${SYST_PREFIX}_closure_constraint"
-        ],
-        "abcd_systematics.type": "rateParam",
-        "abcd_systematics.value": "1.0",
-        "abcd_systematics.bins": [
-            "auto_control_1",
-            "auto_control_2", 
-            "auto_control_3",
-            "auto_predicted"
-        ],
-        "abcd_systematics.processes": [
-            "backgrounds",
-            "backgrounds",
-            "backgrounds", 
-            "backgrounds"
+            # Rate parameters for control regions (auto-mapped at runtime)
+            {
+                "name": f"scale_{syst_prefix}_B",
+                "type": "rateParam",
+                "value": 1.0,
+                "bins": ["auto_control_1"],
+                "processes": ["backgrounds"]
+            },
+            {
+                "name": f"scale_{syst_prefix}_C", 
+                "type": "rateParam",
+                "value": 1.0,
+                "bins": ["auto_control_2"],
+                "processes": ["backgrounds"]
+            },
+            {
+                "name": f"scale_{syst_prefix}_D",
+                "type": "rateParam", 
+                "value": 1.0,
+                "bins": ["auto_control_3"],
+                "processes": ["backgrounds"]
+            },
+            # ABCD constraint (formula auto-generated based on predicted region)
+            {
+                "name": f"abcd_{syst_prefix}_closure_constraint",
+                "type": "rateParam",
+                "formula": "auto",
+                "bins": ["auto_predicted"],
+                "processes": ["backgrounds"]
+            }
         ],
         
-        # Precision systematics - flat format
         "precision_systematics": [
-            "${SYST_PREFIX}_precision_B",
-            "${SYST_PREFIX}_precision_C",
-            "${SYST_PREFIX}_precision_D"
-        ],
-        "precision_systematics.type": "lnN",
-        "precision_systematics.value": "${PRECISION_VALUE}",
-        "precision_systematics.bins": [
-            "auto_control_1",
-            "auto_control_2",
-            "auto_control_3"
-        ],
-        "precision_systematics.processes": [
-            "backgrounds",
-            "backgrounds", 
-            "backgrounds"
+            {
+                "name": f"{syst_prefix}_precision_B",
+                "type": "lnN",
+                "value": precision_value,
+                "bins": ["auto_control_1"],
+                "processes": ["backgrounds"]
+            },
+            {
+                "name": f"{syst_prefix}_precision_C",
+                "type": "lnN", 
+                "value": precision_value,
+                "bins": ["auto_control_2"],
+                "processes": ["backgrounds"]
+            },
+            {
+                "name": f"{syst_prefix}_precision_D",
+                "type": "lnN",
+                "value": precision_value, 
+                "bins": ["auto_control_3"],
+                "processes": ["backgrounds"]
+            }
         ]
     }
+    
+    return systematics
 
 def create_cuts(sv_type, var1_name, var1_low, var1_high, var2_name, var2_low, var2_high, 
                 dxysig_low, dxysig_high, region_type):
@@ -223,7 +242,7 @@ def main():
         with open(args.custom_systematics) as f:
             systematics = yaml.safe_load(f)
     else:
-        systematics = create_standard_systematics_flat()
+        systematics = create_abcd_systematics_auto(syst_prefix, args.precision_value)
     
     # Create substitution dictionary
     substitutions = {
