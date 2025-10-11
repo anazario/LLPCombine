@@ -528,6 +528,21 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
 }
 
 void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
+    std::cout << "DEBUG ParseSystematics: Starting..." << std::endl;
+    
+    // Debug: Print all systematics-related keys
+    std::cout << "DEBUG: Available systematics keys in parser:" << std::endl;
+    for (const auto& pair : parser.values) {
+        if (pair.first.find("systematics") != std::string::npos) {
+            std::cout << "  VALUE: " << pair.first << " = " << pair.second << std::endl;
+        }
+    }
+    for (const auto& pair : parser.lists) {
+        if (pair.first.find("systematics") != std::string::npos) {
+            std::cout << "  LIST: " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
+        }
+    }
+    
     // Parse ABCD systematics
     ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
     
@@ -536,6 +551,9 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
     
     // Parse experimental systematics
     ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
+    
+    std::cout << "DEBUG ParseSystematics: Complete. Found " << config_.abcd_systematics.size() << " ABCD, " 
+              << config_.precision_systematics.size() << " precision, " << config_.experimental_systematics.size() << " experimental" << std::endl;
 }
 
 void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
