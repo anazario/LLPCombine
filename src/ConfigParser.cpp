@@ -544,11 +544,10 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
         }
     }
     
-    // Parse nested YAML structure (modern format used by all existing configs)
-    ParseSystematicCategoryNested(parser, "systematics.abcd_systematics", config_.abcd_systematics);
-    ParseSystematicCategoryNested(parser, "systematics.precision_systematics", config_.precision_systematics);
-    ParseSystematicCategoryNested(parser, "systematics.experimental_systematics", config_.experimental_systematics);
-    ParseSystematicCategoryNested(parser, "systematics.experimental", config_.experimental_systematics);
+    // Parse flat YAML structure (what SimpleYAMLParser actually supports)
+    ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
+    ParseSystematicCategory(parser, "systematics.precision_systematics", config_.precision_systematics);
+    ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
     
     std::cout << "DEBUG ParseSystematics: Complete. Found " << config_.abcd_systematics.size() << " ABCD, " 
               << config_.precision_systematics.size() << " precision, " << config_.experimental_systematics.size() << " experimental" << std::endl;
@@ -611,54 +610,90 @@ void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const
 void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
     std::cout << "DEBUG ParseSystematicCategoryNested: Processing " << category_prefix << std::endl;
     
-    // The SimpleYAMLParser creates keys like "systematics.- bins.name" for list items
-    // We need to find all keys that match the pattern and extract systematic properties
+    // The issue is that the SimpleYAMLParser is parsing all systematics into "systematics.- bins"
+    // instead of separating abcd_systematics vs precision_systematics
+    // Let's look for the general "systematics.- bins" pattern and parse all systematics from there
     
-    std::map<std::string, SystematicConfig> syst_map;  // Using name as key to group properties
+    std::string general_prefix = "systematics.- bins";
     
-    // Look for all keys that start with our category prefix
-    for (const auto& pair : parser.values) {
-        if (pair.first.find(category_prefix + ".") == 0) {
-            std::string remainder = pair.first.substr(category_prefix.length() + 1);
-            std::cout << "DEBUG: Found key remainder: '" << remainder << "' = '" << pair.second << "'" << std::endl;
-            
-            // Skip the "- bins" part and look for actual properties
-            if (remainder.find("- bins.") == 0) {
-                std::string property = remainder.substr(7); // Remove "- bins."
-                std::cout << "DEBUG: Property: '" << property << "' = '" << pair.second << "'" << std::endl;
-                
-                if (property == "name") {
-                    SystematicConfig& syst = syst_map[pair.second];
-                    syst.name = pair.second;
-                } else if (property == "type") {
-                    // We need to find which systematic this belongs to by looking at name
-                    // For now, let's collect all values and match them later
-                }
-            }
-        }
-    }
-    
-    // Alternative approach: look at the list directly if available
-    if (parser.lists.count(category_prefix + ".- bins")) {
-        const auto& list_items = parser.lists.at(category_prefix + ".- bins");
-        std::cout << "DEBUG: Found list with " << list_items.size() << " items" << std::endl;
+    // Check if this category has any systematics
+    if (parser.lists.count(general_prefix)) {
+        const auto& list_items = parser.lists.at(general_prefix);
+        std::cout << "DEBUG: Found systematics list with " << list_items.size() << " items" << std::endl;
         
         // Print all list items to understand the structure
         for (size_t i = 0; i < list_items.size(); ++i) {
             std::cout << "DEBUG: List item " << i << ": '" << list_items[i] << "'" << std::endl;
         }
-    }
-    
-    std::cout << "DEBUG: Found " << syst_map.size() << " systematics for " << category_prefix << std::endl;
-    
-    for (const auto& pair : syst_map) {
-        const SystematicConfig& syst = pair.second;
-        std::cout << "DEBUG: Parsed systematic: name=" << syst.name 
-                  << ", type=" << syst.type << ", bins=" << syst.bins.size() 
-                  << ", processes=" << syst.processes.size() << std::endl;
         
-        if (!syst.name.empty()) {
-            systematics.push_back(syst);
+        // The problem is the YAML parser is merging all systematics into one list
+        // We need to parse the individual properties for each systematic from the values map
+        
+        // Look for systematic names in the list and try to find their properties
+        std::vector<std::string> systematic_names;
+        
+        // Extract names from the values
+        for (const auto& pair : parser.values) {
+            if (pair.first.find(general_prefix + ".name") != std::string::npos) {
+                systematic_names.push_back(pair.second);
+                std::cout << "DEBUG: Found systematic name: " << pair.second << std::endl;
+            }
+        }
+        
+        // For each systematic name, try to find its properties
+        for (const std::string& name : systematic_names) {
+            SystematicConfig syst;
+            syst.name = name;
+            
+            // Look for properties - they should be in the same order as the names
+            for (const auto& pair : parser.values) {
+                if (pair.first.find(general_prefix + ".type") != std::string::npos) {
+                    syst.type = pair.second;
+                    std::cout << "DEBUG: Found type: " << pair.second << " for " << name << std::endl;
+                    break; // Take the first one for now
+                }
+            }
+            
+            for (const auto& pair : parser.values) {
+                if (pair.first.find(general_prefix + ".value") != std::string::npos) {
+                    try {
+                        syst.value = std::stod(pair.second);
+                    } catch (...) {
+                        syst.value = 1.0;
+                    }
+                    std::cout << "DEBUG: Found value: " << pair.second << " for " << name << std::endl;
+                    break;
+                }
+            }
+            
+            // Look for formula
+            for (const auto& pair : parser.values) {
+                if (pair.first.find(general_prefix + ".formula") != std::string::npos) {
+                    syst.formula = pair.second;
+                    std::cout << "DEBUG: Found formula: " << pair.second << " for " << name << std::endl;
+                    break;
+                }
+            }
+            
+            // Add bins and processes from the list items (they're mixed in the list)
+            for (const std::string& item : list_items) {
+                if (item.find("auto_") == 0 || item.find("nLeptonic") == 0) {
+                    syst.bins.push_back(item);
+                } else if (item == "backgrounds" || item == "signals") {
+                    syst.processes.push_back(item);
+                }
+            }
+            
+            std::cout << "DEBUG: Parsed systematic: name=" << syst.name 
+                      << ", type=" << syst.type << ", value=" << syst.value
+                      << ", bins=" << syst.bins.size() 
+                      << ", processes=" << syst.processes.size() << std::endl;
+            
+            if (!syst.name.empty() && !syst.type.empty()) {
+                systematics.push_back(syst);
+            }
         }
     }
+    
+    std::cout << "DEBUG: Found " << systematics.size() << " systematics for " << category_prefix << std::endl;
 }

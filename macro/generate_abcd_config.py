@@ -15,61 +15,48 @@ import os
 import sys
 from string import Template
 
-def create_standard_systematics():
-    """Create standard ABCD systematics structure"""
+def create_standard_systematics_flat():
+    """Create standard ABCD systematics in flat format for SimpleYAMLParser"""
     return {
+        # ABCD systematics - flat format that ConfigParser expects
         "abcd_systematics": [
-            {
-                "name": "scale_${SYST_PREFIX}_B",
-                "type": "rateParam", 
-                "value": 1.0,
-                "bins": ["auto_control_1"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": "scale_${SYST_PREFIX}_C",
-                "type": "rateParam",
-                "value": 1.0, 
-                "bins": ["auto_control_2"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": "scale_${SYST_PREFIX}_D", 
-                "type": "rateParam",
-                "value": 1.0,
-                "bins": ["auto_control_3"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": "abcd_${SYST_PREFIX}_constraint",
-                "type": "rateParam",
-                "formula": "auto",
-                "bins": ["auto_predicted"],
-                "processes": ["backgrounds"]
-            }
+            "scale_${SYST_PREFIX}_B",
+            "scale_${SYST_PREFIX}_C", 
+            "scale_${SYST_PREFIX}_D",
+            "abcd_${SYST_PREFIX}_closure_constraint"
         ],
+        "abcd_systematics.type": "rateParam",
+        "abcd_systematics.value": "1.0",
+        "abcd_systematics.bins": [
+            "auto_control_1",
+            "auto_control_2", 
+            "auto_control_3",
+            "auto_predicted"
+        ],
+        "abcd_systematics.processes": [
+            "backgrounds",
+            "backgrounds",
+            "backgrounds", 
+            "backgrounds"
+        ],
+        
+        # Precision systematics - flat format
         "precision_systematics": [
-            {
-                "name": "${SYST_PREFIX}_precision_B",
-                "type": "lnN",
-                "value": "${PRECISION_VALUE}",
-                "bins": ["auto_control_1"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": "${SYST_PREFIX}_precision_C",
-                "type": "lnN", 
-                "value": "${PRECISION_VALUE}",
-                "bins": ["auto_control_2"],
-                "processes": ["backgrounds"]
-            },
-            {
-                "name": "${SYST_PREFIX}_precision_D",
-                "type": "lnN",
-                "value": "${PRECISION_VALUE}",
-                "bins": ["auto_control_3"], 
-                "processes": ["backgrounds"]
-            }
+            "${SYST_PREFIX}_precision_B",
+            "${SYST_PREFIX}_precision_C",
+            "${SYST_PREFIX}_precision_D"
+        ],
+        "precision_systematics.type": "lnN",
+        "precision_systematics.value": "${PRECISION_VALUE}",
+        "precision_systematics.bins": [
+            "auto_control_1",
+            "auto_control_2",
+            "auto_control_3"
+        ],
+        "precision_systematics.processes": [
+            "backgrounds",
+            "backgrounds", 
+            "backgrounds"
         ]
     }
 
@@ -236,7 +223,7 @@ def main():
         with open(args.custom_systematics) as f:
             systematics = yaml.safe_load(f)
     else:
-        systematics = create_standard_systematics()
+        systematics = create_standard_systematics_flat()
     
     # Create substitution dictionary
     substitutions = {
@@ -277,9 +264,8 @@ def main():
     
     template = Template(template_content)
     
-    # Substitute systematics block separately to handle nested substitutions
-    systematics_yaml = yaml.dump(systematics, default_flow_style=False, indent=2)
-    systematics_template = Template(systematics_yaml)
+    # Handle flat systematics format
+    systematics_template = Template(yaml.dump(systematics, default_flow_style=False, indent=2))
     systematics_substituted = systematics_template.safe_substitute(substitutions)
     
     # Indent the systematics block properly for YAML
