@@ -152,12 +152,33 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
         }
     }
     
-    // Calculate ABCD prediction: predicted = control1 * control2 / control3
-    double predicted_rate = obs_rates[control_regions[0]] * obs_rates[control_regions[1]] / obs_rates[control_regions[2]];
+    // Calculate ABCD prediction using correct formula based on which region is predicted
+    double predicted_rate;
+    std::string formula_str;
+    
+    if (predicted_bin == region_A) {
+        // A = B * C / D
+        predicted_rate = obs_rates[region_B] * obs_rates[region_C] / obs_rates[region_D];
+        formula_str = region_B + " * " + region_C + " / " + region_D;
+    } else if (predicted_bin == region_B) {
+        // B = A * D / C  
+        predicted_rate = obs_rates[region_A] * obs_rates[region_D] / obs_rates[region_C];
+        formula_str = region_A + " * " + region_D + " / " + region_C;
+    } else if (predicted_bin == region_C) {
+        // C = A * D / B
+        predicted_rate = obs_rates[region_A] * obs_rates[region_D] / obs_rates[region_B];
+        formula_str = region_A + " * " + region_D + " / " + region_B;
+    } else if (predicted_bin == region_D) {
+        // D = B * C / A
+        predicted_rate = obs_rates[region_B] * obs_rates[region_C] / obs_rates[region_A];
+        formula_str = region_B + " * " + region_C + " / " + region_A;
+    } else {
+        throw std::runtime_error("Invalid predicted region: " + predicted_bin);
+    }
     
     std::cout << "ABCD Calculation:" << std::endl;
-    std::cout << "  " << predicted_bin << " = " << control_regions[0] << " * " << control_regions[1] << " / " << control_regions[2] << std::endl;
-    std::cout << "  " << predicted_bin << " = " << obs_rates[control_regions[0]] << " * " << obs_rates[control_regions[1]] << " / " << obs_rates[control_regions[2]] << " = " << predicted_rate << std::endl;
+    std::cout << "  " << predicted_bin << " = " << formula_str << std::endl;
+    std::cout << "  " << predicted_bin << " = " << predicted_rate << std::endl;
     
     // Add observations and processes
     cb.AddObservations({"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, cats);
