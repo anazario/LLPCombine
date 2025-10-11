@@ -19,22 +19,22 @@ def create_abcd_systematics_auto(syst_prefix, precision_value):
     """Create ABCD systematics using auto placeholders (works for any predicted region)"""
     
     # Create systematics in the format that SimpleYAMLParser can handle
-    # Use manual YAML string formatting to match the working config exactly
+    # Only create rateParams for control regions, not predicted region
     systematics_yaml = f"""abcd_systematics:
     # Rate parameters for control regions (auto-mapped at runtime)
-    - name: "scale_{syst_prefix}_B"
+    - name: "scale_{syst_prefix}_control1"
       type: "rateParam"
       value: 1.0
       bins: ["auto_control_1"]
       processes: ["backgrounds"]
       
-    - name: "scale_{syst_prefix}_C"
+    - name: "scale_{syst_prefix}_control2"
       type: "rateParam"
       value: 1.0
       bins: ["auto_control_2"]
       processes: ["backgrounds"]
       
-    - name: "scale_{syst_prefix}_D"
+    - name: "scale_{syst_prefix}_control3"
       type: "rateParam"
       value: 1.0
       bins: ["auto_control_3"]
@@ -48,20 +48,20 @@ def create_abcd_systematics_auto(syst_prefix, precision_value):
       processes: ["backgrounds"]
 
   precision_systematics:
-    # Precision systematics for control regions
-    - name: "{syst_prefix}_precision_B"
+    # Precision systematics for control regions only
+    - name: "{syst_prefix}_precision_control1"
       type: "lnN"
       value: {precision_value}
       bins: ["auto_control_1"]
       processes: ["backgrounds"]
       
-    - name: "{syst_prefix}_precision_C"
+    - name: "{syst_prefix}_precision_control2"
       type: "lnN"
       value: {precision_value}
       bins: ["auto_control_2"]
       processes: ["backgrounds"]
       
-    - name: "{syst_prefix}_precision_D"
+    - name: "{syst_prefix}_precision_control3"
       type: "lnN"
       value: {precision_value}
       bins: ["auto_control_3"]
