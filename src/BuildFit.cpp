@@ -167,6 +167,10 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     });
     
     // Apply systematics from configuration with auto-resolution
+    std::cout << "DEBUG: About to apply systematics..." << std::endl;
+    std::cout << "  Experimental: " << config.experimental_systematics.size() << std::endl;
+    std::cout << "  ABCD: " << config.abcd_systematics.size() << std::endl;
+    std::cout << "  Precision: " << config.precision_systematics.size() << std::endl;
     
     ApplySystematics(config.experimental_systematics, config.abcd);
     ApplySystematics(config.abcd_systematics, config.abcd);  
@@ -177,35 +181,60 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
 }
 
 void BuildFit::ApplySystematics(const std::vector<SystematicConfig>& systematics, const ABCDConfig& abcd) {
+    std::cout << "DEBUG ApplySystematics: Processing " << systematics.size() << " systematics" << std::endl;
+    
     std::string predicted_bin = abcd.GetPredictedBin();
     std::vector<std::string> control_bins = abcd.GetControlBins();
     
+    std::cout << "DEBUG: predicted_bin = " << predicted_bin << std::endl;
+    std::cout << "DEBUG: control_bins = ";
+    for (const auto& bin : control_bins) std::cout << bin << " ";
+    std::cout << std::endl;
+    
     for (const auto& syst : systematics) {
+        std::cout << "DEBUG: Processing systematic: " << syst.name << " (type=" << syst.type << ")" << std::endl;
+        
         // Resolve auto mappings
         std::vector<std::string> resolved_bins = syst.ResolveBins(abcd);
         
-        if (resolved_bins.empty()) continue;
+        std::cout << "DEBUG: Original bins: ";
+        for (const auto& bin : syst.bins) std::cout << bin << " ";
+        std::cout << std::endl;
+        
+        std::cout << "DEBUG: Resolved bins: ";
+        for (const auto& bin : resolved_bins) std::cout << bin << " ";
+        std::cout << std::endl;
+        
+        if (resolved_bins.empty()) {
+            std::cout << "DEBUG: No resolved bins, skipping systematic" << std::endl;
+            continue;
+        }
         
         if (syst.type == "lnN") {
             // Create lnN systematics with format: lnN_[BIN_NAME]
             for (const auto& bin : resolved_bins) {
+                std::cout << "DEBUG: Adding lnN systematic lnN_" << bin << " with value " << syst.value << std::endl;
                 cb.cp().bin({bin}).AddSyst(cb, "lnN_" + bin, "lnN", SystMap<>::init(syst.value));
             }
             
         } else if (syst.type == "rateParam") {
             if (syst.name.find("closure_constraint") != std::string::npos) {
                 // This is the ABCD formula constraint for predicted region
+                std::cout << "DEBUG: Adding ABCD formula constraint for " << predicted_bin << std::endl;
                 cb.cp().bin({predicted_bin}).AddSyst(cb, "scale_" + predicted_bin, "rateParam", SystMapFunc<>::init
                     ("(@0*@1/@2)", "scale_" + control_bins[0] + ",scale_" + control_bins[1] + ",scale_" + control_bins[2])
                 );
             } else {
                 // These are individual scale parameters for control regions
                 for (const auto& bin : resolved_bins) {
+                    std::cout << "DEBUG: Adding rateParam scale_" << bin << " with value " << syst.value << std::endl;
                     cb.cp().bin({bin}).AddSyst(cb, "scale_" + bin, "rateParam", SystMap<>::init(syst.value));
                 }
             }
         }
     }
+    
+    std::cout << "DEBUG: ApplySystematics complete" << std::endl;
 }
 
 std::string BuildFit::JoinStrings(const std::vector<std::string>& strings, const std::string& delimiter) {
