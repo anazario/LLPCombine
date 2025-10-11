@@ -63,9 +63,22 @@ def extract_abcd_info(fit_file):
             bin_name = key.GetName()
             bin_dir = shapes_prefit.GetDirectory(bin_name)
             if bin_dir:
-                data_hist = bin_dir.Get("data")
+                # Debug: print what's available in this directory
+                print(f"DEBUG: Available histograms in {bin_name}:")
+                for subkey in bin_dir.GetListOfKeys():
+                    print(f"  - {subkey.GetName()}")
+                
+                # Try data_obs first (standard name), then data
+                data_hist = bin_dir.Get("data_obs")
+                if not data_hist:
+                    data_hist = bin_dir.Get("data")
+                    
                 if data_hist:
-                    data_yields[bin_name] = data_hist.Integral()
+                    integral = data_hist.Integral()
+                    print(f"DEBUG: {bin_name} data integral = {integral}")
+                    data_yields[bin_name] = integral
+                else:
+                    print(f"ERROR: No data histogram found in {bin_name}")
     
     f.Close()
     
