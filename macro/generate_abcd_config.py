@@ -300,9 +300,14 @@ def main():
     vary_low_str = format_range_string(vary_ranges[0][0], vary_ranges[0][1])
     vary_high_str = format_range_string(vary_ranges[1][0], vary_ranges[1][1])
     
-    # Create base name from variable names
-    varx_clean = args.varx_name.replace('[1]', '').replace('rjr_', '')
-    vary_clean = args.vary_name.replace('[1]', '').replace('rjr_', '')
+    # Create base name from variable names (clean for RooFit compatibility)
+    def clean_variable_name(var_name):
+        """Clean variable name for RooFit compatibility"""
+        return (var_name.replace('[1]', '').replace('[0]', '')
+                       .replace('rjr_', '').replace('[', '_').replace(']', ''))
+    
+    varx_clean = clean_variable_name(args.varx_name)
+    vary_clean = clean_variable_name(args.vary_name)
     base_name = f"{args.sv_type}_{varx_clean}_{vary_clean}"
     
     # Create region definitions
