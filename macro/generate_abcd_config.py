@@ -89,14 +89,15 @@ def create_cuts(sv_type, var1_name, var1_low, var1_high, var2_name, var2_low, va
         else:
             cuts.append(f"{var2_name} > {var2_low}")
     
-    # dxySig cuts based on region
+    # dxySig cuts based on ABCD standard pattern
+    # A=[x_low,y_high], B=[x_high,y_high], C=[x_low,y_low], D=[x_high,y_low]
     sv_branch_name = "HadronicSV" if sv_type == "nHadronic" else "LeptonicSV"
-    if region_type in ["A", "C"]:  # Low dxySig regions
-        cuts.extend([f"{sv_branch_name}_dxySig[0] > {dxysig_low}", 
-                    f"{sv_branch_name}_dxySig[0] < {dxysig_high}"])
-    else:  # High dxySig regions (B, D)
+    if region_type in ["A", "B"]:  # High dxySig regions (y_high)
         cuts.extend([f"{sv_branch_name}_dxySig[0] > {dxysig_high}",
                     f"{sv_branch_name}_dxySig[0] < 1000"])
+    else:  # Low dxySig regions (C, D) (y_low)
+        cuts.extend([f"{sv_branch_name}_dxySig[0] > {dxysig_low}", 
+                    f"{sv_branch_name}_dxySig[0] < {dxysig_high}"])
     
     return cuts
 
