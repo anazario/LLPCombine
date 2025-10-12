@@ -200,7 +200,7 @@ def main():
     
     # Analysis settings
     parser.add_argument("--name", required=True, help="Analysis name")
-    parser.add_argument("--output", required=True, help="Output config file")
+    parser.add_argument("--output", help="Output config file (default: auto-generated from name and predicted region)")
     parser.add_argument("--luminosity", type=float, default=30.0, help="Luminosity (fb^-1)")
     parser.add_argument("--output-dir", default="./json/", help="Output directory")
     
@@ -236,6 +236,14 @@ def main():
     parser.add_argument("--template", default="config/abcd_template.yaml", help="Template file")
     
     args = parser.parse_args()
+    
+    # Auto-generate output filename if not provided
+    if not args.output:
+        # Extract region letter (A, B, C, D) from predicted region
+        region_letter = args.predicted.split('_')[-1]  # "region_A" -> "A"
+        # Clean up name for filename (replace spaces with underscores, etc.)
+        clean_name = args.name.replace(' ', '_').replace('-', '_')
+        args.output = f"{clean_name}_Predict{region_letter}.yaml"
     
     # Parse variable ranges
     def parse_ranges(range_str):
