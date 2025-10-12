@@ -415,21 +415,21 @@ def print_closure_summary(closure_data, signal_name):
     print(f"   Region D: {yields['D']:8.1f}")
     
     print(f"\n⚖️  FITTED SCALE FACTORS:")
-    print(f"   Region A: {scales['A']['value']:6.3f} ± {scales['A']['error']:5.3f}")
-    print(f"   Region B: {scales['B']['value']:6.3f} ± {scales['B']['error']:5.3f}")
-    print(f"   Region C: {scales['C']['value']:6.3f} ± {scales['C']['error']:5.3f}")
-    print(f"   Region D: {scales['D']['value']:6.3f} ± {scales['D']['error']:5.3f}")
+    print(f"   Region A: {scales['A']['value']:8.5f} ± {scales['A']['error']:7.5f}")
+    print(f"   Region B: {scales['B']['value']:8.5f} ± {scales['B']['error']:7.5f}")
+    print(f"   Region C: {scales['C']['value']:8.5f} ± {scales['C']['error']:7.5f}")
+    print(f"   Region D: {scales['D']['value']:8.5f} ± {scales['D']['error']:7.5f}")
     
     print(f"\n🎯 ABCD PREDICTIONS:")
-    print(f"   Naive ({preds['formula']}):       {preds['naive']:8.1f}")
-    print(f"   Fitted (scaled):       {preds['fitted']:8.1f}")
-    print(f"   True ({predicted_region}):              {yields['predicted_true']:8.1f}")
+    print(f"   Naive ({preds['formula']}):       {preds['naive']:10.4f}")
+    print(f"   Fitted (scaled):       {preds['fitted']:10.4f}")
+    print(f"   True ({predicted_region}):              {yields['predicted_true']:10.4f}")
     
     print(f"\n📏 CLOSURE PERFORMANCE:")
-    print(f"   Naive ratio (pred/true):   {metrics['naive_ratio']:6.3f}")
-    print(f"   Fitted ratio (pred/true):  {metrics['closure_ratio']:6.3f}")
-    print(f"   Statistical error:         {metrics['stat_error']:6.1f}")
-    print(f"   Pull (fitted-true)/σ:      {metrics['pull']:+6.2f}")
+    print(f"   Naive ratio (pred/true):   {metrics['naive_ratio']:8.5f}")
+    print(f"   Fitted ratio (pred/true):  {metrics['closure_ratio']:8.5f}")
+    print(f"   Statistical error:         {metrics['stat_error']:8.4f}")
+    print(f"   Pull (fitted-true)/σ:      {metrics['pull']:+8.4f}")
     
     # Interpret results
     print(f"\n🔍 INTERPRETATION:")
