@@ -71,7 +71,6 @@ public:
                         current_anchor_key.erase(0, current_anchor_key.find_first_not_of(" \t"));
                         current_section = section_key.substr(0, anchor_pos);
                         current_section.erase(current_section.find_last_not_of(" \t") + 1);
-                        std::cout << "DEBUG: Found top-level anchor definition '" << current_anchor_key << "' for section '" << current_section << "'" << std::endl;
                     } else {
                         current_section = section_key;
                         current_anchor_key = "";
@@ -529,10 +528,8 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
 }
 
 void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
-    std::cout << "DEBUG ParseSystematics: Starting..." << std::endl;
     
     // Debug: Print all systematics-related keys
-    std::cout << "DEBUG: Available systematics keys in parser:" << std::endl;
     for (const auto& pair : parser.values) {
         if (pair.first.find("systematics") != std::string::npos) {
             std::cout << "  VALUE: " << pair.first << " = " << pair.second << std::endl;
@@ -552,28 +549,21 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
     
     // Parse experimental systematics
     ParseSystematicCategory(parser, "systematics.experimental_systematics", config_.experimental_systematics);
-    
-    std::cout << "DEBUG ParseSystematics: Complete. Found " << config_.abcd_systematics.size() << " ABCD, " 
-              << config_.precision_systematics.size() << " precision, " << config_.experimental_systematics.size() << " experimental" << std::endl;
 }
 
 void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
-    std::cout << "DEBUG ParseSystematicCategory: Looking for " << category_prefix << std::endl;
     
     // Debug: print what lists are available
-    std::cout << "DEBUG: Available lists:" << std::endl;
     for (const auto& pair : parser.lists) {
         std::cout << "  " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
     }
     
     // Get the list of systematic names
     if (parser.lists.count(category_prefix) == 0) {
-        std::cout << "DEBUG: No list found for " << category_prefix << std::endl;
         return; // No systematics for this category
     }
     
     const auto& systematic_names = parser.lists.at(category_prefix);
-    std::cout << "DEBUG: Found " << systematic_names.size() << " systematic names for " << category_prefix << std::endl;
     
     // Get common properties for this category
     std::string common_type;
@@ -622,7 +612,6 @@ void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const
 }
 
 void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
-    std::cout << "DEBUG ParseSystematicCategoryNested: Processing " << category_prefix << std::endl;
     
     // The issue is that the SimpleYAMLParser is parsing all systematics into "systematics.- bins"
     // instead of separating abcd_systematics vs precision_systematics
@@ -633,11 +622,9 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
     // Check if this category has any systematics
     if (parser.lists.count(general_prefix)) {
         const auto& list_items = parser.lists.at(general_prefix);
-        std::cout << "DEBUG: Found systematics list with " << list_items.size() << " items" << std::endl;
         
         // Print all list items to understand the structure
         for (size_t i = 0; i < list_items.size(); ++i) {
-            std::cout << "DEBUG: List item " << i << ": '" << list_items[i] << "'" << std::endl;
         }
         
         // The problem is the YAML parser is merging all systematics into one list
@@ -650,7 +637,6 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
         for (const auto& pair : parser.values) {
             if (pair.first.find(general_prefix + ".name") != std::string::npos) {
                 systematic_names.push_back(pair.second);
-                std::cout << "DEBUG: Found systematic name: " << pair.second << std::endl;
             }
         }
         
@@ -663,7 +649,6 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
             for (const auto& pair : parser.values) {
                 if (pair.first.find(general_prefix + ".type") != std::string::npos) {
                     syst.type = pair.second;
-                    std::cout << "DEBUG: Found type: " << pair.second << " for " << name << std::endl;
                     break; // Take the first one for now
                 }
             }
@@ -675,7 +660,6 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
                     } catch (...) {
                         syst.value = 1.0;
                     }
-                    std::cout << "DEBUG: Found value: " << pair.second << " for " << name << std::endl;
                     break;
                 }
             }
@@ -684,7 +668,6 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
             for (const auto& pair : parser.values) {
                 if (pair.first.find(general_prefix + ".formula") != std::string::npos) {
                     syst.formula = pair.second;
-                    std::cout << "DEBUG: Found formula: " << pair.second << " for " << name << std::endl;
                     break;
                 }
             }
@@ -698,34 +681,24 @@ void ConfigParser::ParseSystematicCategoryNested(const SimpleYAMLParser& parser,
                 }
             }
             
-            std::cout << "DEBUG: Parsed systematic: name=" << syst.name 
-                      << ", type=" << syst.type << ", value=" << syst.value
-                      << ", bins=" << syst.bins.size() 
-                      << ", processes=" << syst.processes.size() << std::endl;
-            
             if (!syst.name.empty() && !syst.type.empty()) {
                 systematics.push_back(syst);
             }
         }
     }
     
-    std::cout << "DEBUG: Found " << systematics.size() << " systematics for " << category_prefix << std::endl;
 }
 
 void ConfigParser::ParseSystematicsFromCombinedList(const SimpleYAMLParser& parser) {
-    std::cout << "DEBUG ParseSystematicsFromCombinedList: Starting..." << std::endl;
     
     if (!parser.lists.count("systematics")) {
-        std::cout << "DEBUG: No systematics list found" << std::endl;
         return;
     }
     
     const auto& all_items = parser.lists.at("systematics");
-    std::cout << "DEBUG: Found systematics list with " << all_items.size() << " items" << std::endl;
     
     // Print all items to understand structure
     for (size_t i = 0; i < all_items.size(); ++i) {
-        std::cout << "DEBUG: Item " << i << ": '" << all_items[i] << "'" << std::endl;
     }
     
     // Separate systematic names by category based on naming patterns
@@ -741,10 +714,6 @@ void ConfigParser::ParseSystematicsFromCombinedList(const SimpleYAMLParser& pars
         }
     }
     
-    std::cout << "DEBUG: Separated systematics - ABCD: " << abcd_names.size() 
-              << ", Precision: " << precision_names.size() 
-              << ", Experimental: " << experimental_names.size() << std::endl;
-    
     // Create systematics for each category
     CreateSystematicsFromNames(parser, abcd_names, "abcd_systematics", config_.abcd_systematics);
     CreateSystematicsFromNames(parser, precision_names, "precision_systematics", config_.precision_systematics);
@@ -754,7 +723,6 @@ void ConfigParser::ParseSystematicsFromCombinedList(const SimpleYAMLParser& pars
 void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, const std::vector<std::string>& names, const std::string& category, std::vector<SystematicConfig>& systematics) {
     if (names.empty()) return;
     
-    std::cout << "DEBUG CreateSystematicsFromNames: Processing " << category << " with " << names.size() << " names" << std::endl;
     
     // Get common properties for this category
     std::string common_type = "";
@@ -765,7 +733,6 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
     
     if (parser.values.count(type_key)) {
         common_type = parser.values.at(type_key);
-        std::cout << "DEBUG: Found type: " << common_type << std::endl;
     }
     
     if (parser.values.count(value_key)) {
@@ -774,7 +741,6 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
         } catch (...) {
             common_value = 1.0;
         }
-        std::cout << "DEBUG: Found value: " << common_value << std::endl;
     }
     
     // Get bins and processes from proper keys
@@ -791,7 +757,6 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
         processes_list = parser.lists.at(processes_key);
     }
     
-    std::cout << "DEBUG: Extracted " << bins_list.size() << " bins and " << processes_list.size() << " processes for " << category << std::endl;
     
     // Create systematics - one for each name
     for (size_t i = 0; i < names.size(); i++) {
@@ -807,10 +772,6 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
         if (i < processes_list.size()) {
             syst.processes.push_back(processes_list[i]);
         }
-        
-        std::cout << "DEBUG: Created systematic: " << syst.name << " (type=" << syst.type 
-                  << ", value=" << syst.value << ", bins=" << syst.bins.size() 
-                  << ", processes=" << syst.processes.size() << ")" << std::endl;
         
         systematics.push_back(syst);
     }

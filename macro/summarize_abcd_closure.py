@@ -29,7 +29,6 @@ def extract_observations_from_datacard(datacard_path):
         with open(datacard_path, 'r') as f:
             lines = f.readlines()
         
-        print(f"DEBUG: Parsing datacard {datacard_path}")
         
         # Find the observation line
         observations = []
@@ -39,11 +38,9 @@ def extract_observations_from_datacard(datacard_path):
                 parts = line.split()
                 if len(parts) >= 2:
                     observations = [float(x) for x in parts[1:]]
-                    print(f"DEBUG: Found observations: {observations}")
                     break
         
         if not observations:
-            print("DEBUG: No observation line found")
             return {}
         
         # Find the bin names from the first bin line after the separator
@@ -58,11 +55,9 @@ def extract_observations_from_datacard(datacard_path):
                 parts = line.split()
                 if len(parts) >= 2:
                     bin_names = parts[1:]
-                    print(f"DEBUG: Found bin names: {bin_names}")
                     break
         
         if not bin_names:
-            print("DEBUG: No bin names found")
             return {}
         
         # Get unique bin names (the line may have duplicates)
@@ -71,15 +66,11 @@ def extract_observations_from_datacard(datacard_path):
             if bin_name not in unique_bins:
                 unique_bins.append(bin_name)
         
-        print(f"DEBUG: Unique bins: {unique_bins}")
         
         # Match observations to bin names
         if len(observations) == len(unique_bins):
             for bin_name, obs in zip(unique_bins, observations):
                 data_yields[bin_name] = int(obs) if obs == int(obs) else obs
-                print(f"DEBUG: {bin_name} = {data_yields[bin_name]}")
-        else:
-            print(f"DEBUG: Mismatch - {len(observations)} observations vs {len(unique_bins)} bins")
                 
     except Exception as e:
         print(f"ERROR: Failed to parse datacard {datacard_path}: {e}")
@@ -133,7 +124,6 @@ def extract_abcd_info(fit_file, verbose=False):
     if workspace:
         # Debug: print all variables in workspace to see what's available
         if verbose:
-            print("DEBUG: Available variables in workspace:")
             var_iter = workspace.allVars().createIterator()
             var = var_iter.Next()
             while var:
@@ -154,22 +144,17 @@ def extract_abcd_info(fit_file, verbose=False):
                 obs_var = workspace.var(pattern)
                 if obs_var:
                     data_yields[bin_name] = obs_var.getVal()
-                    print(f"DEBUG: Found observed data - {bin_name} = {obs_var.getVal()}")
                     found = True
                     break
             
             if not found:
                 print(f"WARNING: Could not find observed data for {bin_name} in workspace")
-    else:
-        print("DEBUG: No workspace found in ROOT file")
     
     # If no workspace or no data found, try to extract from datacard
     if not data_yields:
         print("INFO: Attempting to extract observed data from datacard...")
         # Try common datacard names
         fit_dir = os.path.dirname(fit_file)
-        print(f"DEBUG: Looking for datacard in directory: {fit_dir}")
-        print(f"DEBUG: Files in directory: {os.listdir(fit_dir)}")
         
         for datacard_name in ["datacard.txt", "combine_datacard.txt", "*.txt"]:
             if "*" in datacard_name:
