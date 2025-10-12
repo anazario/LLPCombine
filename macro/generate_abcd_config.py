@@ -189,16 +189,19 @@ def main():
     region_cuts = {}
     region_descs = {}
     
-    # Region A: var1_high, dxySig_low (typically the signal region)
+    # Standard ABCD grid: A=[x_low,y_high], B=[x_high,y_high], C=[x_low,y_low], D=[x_high,y_low]
+    # Where x=var1 (e.g., rjr_Rs) and y=dxySig
+    
+    # Region A: var1_low, dxySig_high [x_low, y_high]
     region_a_name = f"{base_name}_A"
     regions["region_A"] = region_a_name
-    region_cuts[region_a_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[1][0], var1_ranges[1][1],
-                                           args.var2_name, var2_ranges[1][0] if args.var2_ranges else None, 
-                                           var2_ranges[1][1] if args.var2_ranges else None,
+    region_cuts[region_a_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[0][0], var1_ranges[0][1],
+                                           args.var2_name, var2_ranges[0][0] if args.var2_ranges else None, 
+                                           var2_ranges[0][1] if args.var2_ranges else None,
                                            args.dxysig_low, args.dxysig_mid, "A")
-    region_descs[region_a_name] = f"{args.sv_type}, Var1 {var1_high_str}, dxySig low - PREDICTED" if args.predicted == "region_A" else f"{args.sv_type}, Var1 {var1_high_str}, dxySig low"
+    region_descs[region_a_name] = f"{args.sv_type}, Var1 {var1_low_str}, dxySig high - PREDICTED" if args.predicted == "region_A" else f"{args.sv_type}, Var1 {var1_low_str}, dxySig high"
     
-    # Region B: var1_high, dxySig_high  
+    # Region B: var1_high, dxySig_high [x_high, y_high]
     region_b_name = f"{base_name}_B"
     regions["region_B"] = region_b_name
     region_cuts[region_b_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[1][0], var1_ranges[1][1],
@@ -207,7 +210,7 @@ def main():
                                            args.dxysig_low, args.dxysig_mid, "B")
     region_descs[region_b_name] = f"{args.sv_type}, Var1 {var1_high_str}, dxySig high - PREDICTED" if args.predicted == "region_B" else f"{args.sv_type}, Var1 {var1_high_str}, dxySig high"
     
-    # Region C: var1_low, dxySig_low
+    # Region C: var1_low, dxySig_low [x_low, y_low]
     region_c_name = f"{base_name}_C" 
     regions["region_C"] = region_c_name
     region_cuts[region_c_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[0][0], var1_ranges[0][1],
@@ -216,14 +219,14 @@ def main():
                                            args.dxysig_low, args.dxysig_mid, "C")
     region_descs[region_c_name] = f"{args.sv_type}, Var1 {var1_low_str}, dxySig low - PREDICTED" if args.predicted == "region_C" else f"{args.sv_type}, Var1 {var1_low_str}, dxySig low"
     
-    # Region D: var1_low, dxySig_high
+    # Region D: var1_high, dxySig_low [x_high, y_low]
     region_d_name = f"{base_name}_D"
     regions["region_D"] = region_d_name  
-    region_cuts[region_d_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[0][0], var1_ranges[0][1],
-                                           args.var2_name, var2_ranges[0][0] if args.var2_ranges else None,
-                                           var2_ranges[0][1] if args.var2_ranges else None,
+    region_cuts[region_d_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[1][0], var1_ranges[1][1],
+                                           args.var2_name, var2_ranges[1][0] if args.var2_ranges else None,
+                                           var2_ranges[1][1] if args.var2_ranges else None,
                                            args.dxysig_low, args.dxysig_mid, "D")
-    region_descs[region_d_name] = f"{args.sv_type}, Var1 {var1_low_str}, dxySig high - PREDICTED" if args.predicted == "region_D" else f"{args.sv_type}, Var1 {var1_low_str}, dxySig high"
+    region_descs[region_d_name] = f"{args.sv_type}, Var1 {var1_high_str}, dxySig low - PREDICTED" if args.predicted == "region_D" else f"{args.sv_type}, Var1 {var1_high_str}, dxySig low"
     
     # Create systematics
     syst_prefix = args.syst_prefix or args.name.replace(" ", "_").lower()
