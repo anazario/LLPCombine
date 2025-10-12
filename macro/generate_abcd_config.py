@@ -69,37 +69,70 @@ precision_systematics:
     
     return systematics_yaml
 
-def create_cuts(sv_type, var1_name, var1_low, var1_high, var2_name, var2_low, var2_high, 
-                dxysig_low, dxysig_high, region_type):
-    """Create cuts for a specific region"""
+def create_cuts(sv_type, varx_name, varx_ranges, vary_name, vary_ranges, 
+                region_type, common_cuts=None, common_xcuts=None, common_ycuts=None):
+    """Create cuts for a specific ABCD region
+    
+    ABCD grid definition: A=[x_low,y_high], B=[x_high,y_high], C=[x_low,y_low], D=[x_high,y_low]
+    varx_ranges = [(low1, high1), (low2, high2)]  # [x_low_range, x_high_range]
+    vary_ranges = [(low1, high1), (low2, high2)]  # [y_low_range, y_high_range]
+    
+    Returns: (individual_cuts, anchor_refs)
+    """
+    
+    individual_cuts = []
+    anchor_refs = []
     
     # Base SV cut
-    cuts = [f"SV_{sv_type} == 1"]
+    individual_cuts.append(f"SV_{sv_type} == 1")
     
-    # Variable 1 cuts (Ms or Rs)
-    if var1_high is not None:
-        cuts.extend([f"{var1_name} > {var1_low}", f"{var1_name} < {var1_high}"])
-    else:
-        cuts.append(f"{var1_name} > {var1_low}")
+    # Add common cuts reference if exists
+    if common_cuts:
+        anchor_refs.append("common_cuts")
     
-    # Variable 2 cuts (Rs or Ms) - optional
-    if var2_name and var2_low is not None:
-        if var2_high is not None:
-            cuts.extend([f"{var2_name} > {var2_low}", f"{var2_name} < {var2_high}"])
-        else:
-            cuts.append(f"{var2_name} > {var2_low}")
-    
-    # dxySig cuts based on ABCD standard pattern
+    # Select X and Y ranges based on region type
     # A=[x_low,y_high], B=[x_high,y_high], C=[x_low,y_low], D=[x_high,y_low]
-    sv_branch_name = "HadronicSV" if sv_type == "nHadronic" else "LeptonicSV"
-    if region_type in ["A", "B"]:  # High dxySig regions (y_high)
-        cuts.extend([f"{sv_branch_name}_dxySig[0] > {dxysig_high}",
-                    f"{sv_branch_name}_dxySig[0] < 1000"])
-    else:  # Low dxySig regions (C, D) (y_low)
-        cuts.extend([f"{sv_branch_name}_dxySig[0] > {dxysig_low}", 
-                    f"{sv_branch_name}_dxySig[0] < {dxysig_high}"])
+    if region_type in ["A", "C"]:  # x_low regions
+        x_low, x_high = varx_ranges[0]  # Use first (low) range
+        x_index = 0
+    else:  # B, D - x_high regions  
+        x_low, x_high = varx_ranges[1]  # Use second (high) range
+        x_index = 1
+        
+    if region_type in ["A", "B"]:  # y_high regions
+        y_low, y_high = vary_ranges[1]  # Use second (high) range
+        y_index = 1
+    else:  # C, D - y_low regions
+        y_low, y_high = vary_ranges[0]  # Use first (low) range
+        y_index = 0
     
-    return cuts
+    # Add X-axis cuts
+    if x_high is not None:
+        individual_cuts.extend([f"{varx_name} > {x_low}", f"{varx_name} < {x_high}"])
+    else:
+        individual_cuts.append(f"{varx_name} > {x_low}")
+    
+    # Add Y-axis cuts  
+    if y_high is not None:
+        individual_cuts.extend([f"{vary_name} > {y_low}", f"{vary_name} < {y_high}"])
+    else:
+        individual_cuts.append(f"{vary_name} > {y_low}")
+    
+    # Add common X-cuts references (applied based on x-axis range)
+    if common_xcuts:
+        if x_index == 0 and "x_low" in common_xcuts:  # x_low range
+            anchor_refs.append("common_x_low_cuts")
+        elif x_index == 1 and "x_high" in common_xcuts:  # x_high range
+            anchor_refs.append("common_x_high_cuts")
+        
+    # Add common Y-cuts references (applied based on y-axis range)  
+    if common_ycuts:
+        if y_index == 0 and "y_low" in common_ycuts:  # y_low range
+            anchor_refs.append("common_y_low_cuts")
+        elif y_index == 1 and "y_high" in common_ycuts:  # y_high range
+            anchor_refs.append("common_y_high_cuts")
+    
+    return individual_cuts, anchor_refs
 
 def format_range_string(low, high):
     """Format range for descriptions"""
@@ -108,12 +141,59 @@ def format_range_string(low, high):
     else:
         return f"{low}-{high}"
 
-def format_cuts_as_yaml(cuts_list):
+def format_cuts_as_yaml(cuts_list, use_anchors=False, anchor_refs=None):
     """Format cuts list as proper YAML list with indentation"""
     formatted_cuts = []
+    
+    # Add anchor references first if any
+    if use_anchors and anchor_refs:
+        for anchor_ref in anchor_refs:
+            formatted_cuts.append(f'      - *{anchor_ref}')
+    
+    # Add individual cuts
     for cut in cuts_list:
         formatted_cuts.append(f'      - "{cut}"')
     return "\n".join(formatted_cuts)
+
+def generate_anchors_block(common_cuts, common_xcuts, common_ycuts):
+    """Generate YAML anchors block for common cuts"""
+    if not any([common_cuts, common_xcuts, common_ycuts]):
+        return ""
+    
+    anchors = []
+    anchors.append("# Common cuts anchors")
+    
+    if common_cuts:
+        anchors.append("anchors:")
+        anchors.append("  common_cuts: &common_cuts")
+        for cut in common_cuts:
+            anchors.append(f'    - "{cut}"')
+    
+    if common_xcuts:
+        if not common_cuts:
+            anchors.append("anchors:")
+        if "x_low" in common_xcuts:
+            anchors.append("  common_x_low_cuts: &common_x_low_cuts")
+            for cut in common_xcuts["x_low"]:
+                anchors.append(f'    - "{cut}"')
+        if "x_high" in common_xcuts:
+            anchors.append("  common_x_high_cuts: &common_x_high_cuts")
+            for cut in common_xcuts["x_high"]:
+                anchors.append(f'    - "{cut}"')
+                
+    if common_ycuts:
+        if not common_cuts and not common_xcuts:
+            anchors.append("anchors:")
+        if "y_low" in common_ycuts:
+            anchors.append("  common_y_low_cuts: &common_y_low_cuts")
+            for cut in common_ycuts["y_low"]:
+                anchors.append(f'    - "{cut}"')
+        if "y_high" in common_ycuts:
+            anchors.append("  common_y_high_cuts: &common_y_high_cuts")
+            for cut in common_ycuts["y_high"]:
+                anchors.append(f'    - "{cut}"')
+    
+    return "\n".join(anchors)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate ABCD configuration from template")
@@ -126,14 +206,15 @@ def main():
     
     # SV and variable settings
     parser.add_argument("--sv-type", choices=["nHadronic", "nLeptonic"], required=True, help="SV type")
-    parser.add_argument("--var1-name", required=True, help="First variable name (e.g., rjr_Ms[1])")
-    parser.add_argument("--var1-ranges", required=True, help="Var1 ranges: 'low1,high1;low2,high2' (use 'inf' for no upper bound)")
-    parser.add_argument("--var2-name", help="Second variable name (optional)")
-    parser.add_argument("--var2-ranges", help="Var2 ranges (optional): 'low1,high1;low2,high2'")
+    parser.add_argument("--varx-name", required=True, help="X-axis variable name (e.g., rjr_Ms[1])")
+    parser.add_argument("--varx-ranges", required=True, help="X-axis ranges: 'low1,high1;low2,high2' (use 'inf' for no upper bound)")
+    parser.add_argument("--vary-name", required=True, help="Y-axis variable name (e.g., rjr_Rs[1])")
+    parser.add_argument("--vary-ranges", required=True, help="Y-axis ranges: 'low1,high1;low2,high2' (use 'inf' for no upper bound)")
     
-    # dxySig settings
-    parser.add_argument("--dxysig-low", type=float, default=100, help="dxySig low boundary")
-    parser.add_argument("--dxysig-mid", type=float, default=300, help="dxySig middle boundary") 
+    # Common cuts
+    parser.add_argument("--common-cuts", help="Common cuts applied to all regions (JSON list of strings)")
+    parser.add_argument("--common-xcuts", help="Common cuts applied only when X-axis is in specific range (JSON list)")
+    parser.add_argument("--common-ycuts", help="Common cuts applied only when Y-axis is in specific range (JSON list)") 
     
     # ABCD settings
     parser.add_argument("--predicted", choices=["region_A", "region_B", "region_C", "region_D"], 
@@ -166,68 +247,100 @@ def main():
             ranges.append((low, high))
         return ranges
     
-    var1_ranges = parse_ranges(args.var1_ranges)
-    var2_ranges = parse_ranges(args.var2_ranges) if args.var2_ranges else [None, None]
+    # Parse common cuts  
+    def parse_cuts(cuts_str):
+        if not cuts_str:
+            return None
+        import json
+        return json.loads(cuts_str)
+    
+    def parse_axis_cuts(cuts_str, axis_type):
+        """Parse axis cuts with shortcut support
+        
+        If cuts_str is a list, apply to both low and high ranges
+        If cuts_str is a dict, use as-is
+        """
+        if not cuts_str:
+            return None
+        import json
+        parsed = json.loads(cuts_str)
+        
+        # Handle shortcut syntax: if it's a list, apply to both low/high
+        if isinstance(parsed, list):
+            low_key = f"{axis_type}_low"
+            high_key = f"{axis_type}_high"
+            return {low_key: parsed, high_key: parsed}
+        
+        return parsed
+    
+    varx_ranges = parse_ranges(args.varx_ranges)
+    vary_ranges = parse_ranges(args.vary_ranges)
     
     # Check we have 2x2 configuration
-    if len(var1_ranges) != 2 or (args.var2_ranges and len(var2_ranges) != 2):
+    if len(varx_ranges) != 2 or len(vary_ranges) != 2:
         print("Error: Must specify exactly 2 ranges for each variable to form 2x2 ABCD grid")
         return 1
+        
+    # Parse common cuts
+    common_cuts = parse_cuts(args.common_cuts)
+    common_xcuts = parse_axis_cuts(args.common_xcuts, "x")
+    common_ycuts = parse_axis_cuts(args.common_ycuts, "y")
     
     # Generate region names and descriptions
-    var1_low_str = format_range_string(var1_ranges[0][0], var1_ranges[0][1])
-    var1_high_str = format_range_string(var1_ranges[1][0], var1_ranges[1][1])
+    varx_low_str = format_range_string(varx_ranges[0][0], varx_ranges[0][1])
+    varx_high_str = format_range_string(varx_ranges[1][0], varx_ranges[1][1])
+    vary_low_str = format_range_string(vary_ranges[0][0], vary_ranges[0][1])
+    vary_high_str = format_range_string(vary_ranges[1][0], vary_ranges[1][1])
     
-    if args.var2_ranges:
-        var2_low_str = format_range_string(var2_ranges[0][0], var2_ranges[0][1])
-        var2_high_str = format_range_string(var2_ranges[1][0], var2_ranges[1][1])
-        base_name = f"{args.sv_type}_{args.var1_name.replace('[1]', '').replace('rjr_', '')}{var1_low_str}_{args.var2_name.replace('[1]', '').replace('rjr_', '')}"
-    else:
-        base_name = f"{args.sv_type}_{args.var1_name.replace('[1]', '').replace('rjr_', '')}"
+    # Create base name from variable names
+    varx_clean = args.varx_name.replace('[1]', '').replace('rjr_', '')
+    vary_clean = args.vary_name.replace('[1]', '').replace('rjr_', '')
+    base_name = f"{args.sv_type}_{varx_clean}_{vary_clean}"
     
     # Create region definitions
     regions = {}
     region_cuts = {}
+    region_anchor_refs = {}
     region_descs = {}
     
     # Standard ABCD grid: A=[x_low,y_high], B=[x_high,y_high], C=[x_low,y_low], D=[x_high,y_low]
-    # Where x=var1 (e.g., rjr_Rs) and y=dxySig
+    # Where x=varx and y=vary
     
-    # Region A: var1_low, dxySig_high [x_low, y_high]
+    # Region A: [x_low, y_high]
     region_a_name = f"{base_name}_A"
     regions["region_A"] = region_a_name
-    region_cuts[region_a_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[0][0], var1_ranges[0][1],
-                                           args.var2_name, var2_ranges[0][0] if args.var2_ranges else None, 
-                                           var2_ranges[0][1] if args.var2_ranges else None,
-                                           args.dxysig_low, args.dxysig_mid, "A")
-    region_descs[region_a_name] = f"{args.sv_type}, Var1 {var1_low_str}, dxySig high - PREDICTED" if args.predicted == "region_A" else f"{args.sv_type}, Var1 {var1_low_str}, dxySig high"
+    individual_cuts, anchor_refs = create_cuts(args.sv_type, args.varx_name, varx_ranges, args.vary_name, vary_ranges,
+                                             "A", common_cuts, common_xcuts, common_ycuts)
+    region_cuts[region_a_name] = individual_cuts
+    region_anchor_refs[region_a_name] = anchor_refs
+    region_descs[region_a_name] = f"{args.sv_type}, {varx_clean} {varx_low_str}, {vary_clean} {vary_high_str} - PREDICTED" if args.predicted == "region_A" else f"{args.sv_type}, {varx_clean} {varx_low_str}, {vary_clean} {vary_high_str}"
     
-    # Region B: var1_high, dxySig_high [x_high, y_high]
+    # Region B: [x_high, y_high]
     region_b_name = f"{base_name}_B"
     regions["region_B"] = region_b_name
-    region_cuts[region_b_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[1][0], var1_ranges[1][1],
-                                           args.var2_name, var2_ranges[1][0] if args.var2_ranges else None,
-                                           var2_ranges[1][1] if args.var2_ranges else None, 
-                                           args.dxysig_low, args.dxysig_mid, "B")
-    region_descs[region_b_name] = f"{args.sv_type}, Var1 {var1_high_str}, dxySig high - PREDICTED" if args.predicted == "region_B" else f"{args.sv_type}, Var1 {var1_high_str}, dxySig high"
+    individual_cuts, anchor_refs = create_cuts(args.sv_type, args.varx_name, varx_ranges, args.vary_name, vary_ranges,
+                                             "B", common_cuts, common_xcuts, common_ycuts)
+    region_cuts[region_b_name] = individual_cuts
+    region_anchor_refs[region_b_name] = anchor_refs
+    region_descs[region_b_name] = f"{args.sv_type}, {varx_clean} {varx_high_str}, {vary_clean} {vary_high_str} - PREDICTED" if args.predicted == "region_B" else f"{args.sv_type}, {varx_clean} {varx_high_str}, {vary_clean} {vary_high_str}"
     
-    # Region C: var1_low, dxySig_low [x_low, y_low]
+    # Region C: [x_low, y_low]
     region_c_name = f"{base_name}_C" 
     regions["region_C"] = region_c_name
-    region_cuts[region_c_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[0][0], var1_ranges[0][1],
-                                           args.var2_name, var2_ranges[0][0] if args.var2_ranges else None,
-                                           var2_ranges[0][1] if args.var2_ranges else None,
-                                           args.dxysig_low, args.dxysig_mid, "C")
-    region_descs[region_c_name] = f"{args.sv_type}, Var1 {var1_low_str}, dxySig low - PREDICTED" if args.predicted == "region_C" else f"{args.sv_type}, Var1 {var1_low_str}, dxySig low"
+    individual_cuts, anchor_refs = create_cuts(args.sv_type, args.varx_name, varx_ranges, args.vary_name, vary_ranges,
+                                             "C", common_cuts, common_xcuts, common_ycuts)
+    region_cuts[region_c_name] = individual_cuts
+    region_anchor_refs[region_c_name] = anchor_refs
+    region_descs[region_c_name] = f"{args.sv_type}, {varx_clean} {varx_low_str}, {vary_clean} {vary_low_str} - PREDICTED" if args.predicted == "region_C" else f"{args.sv_type}, {varx_clean} {varx_low_str}, {vary_clean} {vary_low_str}"
     
-    # Region D: var1_high, dxySig_low [x_high, y_low]
+    # Region D: [x_high, y_low]
     region_d_name = f"{base_name}_D"
     regions["region_D"] = region_d_name  
-    region_cuts[region_d_name] = create_cuts(args.sv_type, args.var1_name, var1_ranges[1][0], var1_ranges[1][1],
-                                           args.var2_name, var2_ranges[1][0] if args.var2_ranges else None,
-                                           var2_ranges[1][1] if args.var2_ranges else None,
-                                           args.dxysig_low, args.dxysig_mid, "D")
-    region_descs[region_d_name] = f"{args.sv_type}, Var1 {var1_high_str}, dxySig low - PREDICTED" if args.predicted == "region_D" else f"{args.sv_type}, Var1 {var1_high_str}, dxySig low"
+    individual_cuts, anchor_refs = create_cuts(args.sv_type, args.varx_name, varx_ranges, args.vary_name, vary_ranges,
+                                             "D", common_cuts, common_xcuts, common_ycuts)
+    region_cuts[region_d_name] = individual_cuts
+    region_anchor_refs[region_d_name] = anchor_refs
+    region_descs[region_d_name] = f"{args.sv_type}, {varx_clean} {varx_high_str}, {vary_clean} {vary_low_str} - PREDICTED" if args.predicted == "region_D" else f"{args.sv_type}, {varx_clean} {varx_high_str}, {vary_clean} {vary_low_str}"
     
     # Create systematics
     syst_prefix = args.syst_prefix or args.name.replace(" ", "_").lower()
@@ -237,6 +350,9 @@ def main():
             systematics = yaml.safe_load(f)
     else:
         systematics = create_abcd_systematics_auto(syst_prefix, args.precision_value)
+    
+    # Generate anchors block
+    anchors_block = generate_anchors_block(common_cuts, common_xcuts, common_ycuts)
     
     # Create substitution dictionary
     substitutions = {
@@ -248,6 +364,7 @@ def main():
         "SIGNALS": args.signals, 
         "SIGNAL_POINTS": args.signal_points,
         "DATA": args.data,
+        "ANCHORS_BLOCK": anchors_block,
         "REGION_A_NAME": regions["region_A"],
         "REGION_B_NAME": regions["region_B"], 
         "REGION_C_NAME": regions["region_C"],
@@ -259,10 +376,10 @@ def main():
         "REGION_B_DESC": region_descs[regions["region_B"]],
         "REGION_C_DESC": region_descs[regions["region_C"]],
         "REGION_D_DESC": region_descs[regions["region_D"]],
-        "REGION_A_CUTS": format_cuts_as_yaml(region_cuts[regions["region_A"]]),
-        "REGION_B_CUTS": format_cuts_as_yaml(region_cuts[regions["region_B"]]),
-        "REGION_C_CUTS": format_cuts_as_yaml(region_cuts[regions["region_C"]]),
-        "REGION_D_CUTS": format_cuts_as_yaml(region_cuts[regions["region_D"]]),
+        "REGION_A_CUTS": format_cuts_as_yaml(region_cuts[regions["region_A"]], use_anchors=True, anchor_refs=region_anchor_refs[regions["region_A"]]),
+        "REGION_B_CUTS": format_cuts_as_yaml(region_cuts[regions["region_B"]], use_anchors=True, anchor_refs=region_anchor_refs[regions["region_B"]]),
+        "REGION_C_CUTS": format_cuts_as_yaml(region_cuts[regions["region_C"]], use_anchors=True, anchor_refs=region_anchor_refs[regions["region_C"]]),
+        "REGION_D_CUTS": format_cuts_as_yaml(region_cuts[regions["region_D"]], use_anchors=True, anchor_refs=region_anchor_refs[regions["region_D"]]),
         "SYSTEMATICS_BLOCK": yaml.dump(systematics),
         "SYST_PREFIX": syst_prefix,
         "PRECISION_VALUE": args.precision_value,

@@ -1,6 +1,8 @@
 # ABCD Parametrized Template Configuration
 # Use with generate_abcd_config.py to create specific configurations
 
+${ANCHORS_BLOCK}
+
 analysis:
   method: "ABCD"
   name: "${ANALYSIS_NAME}"
