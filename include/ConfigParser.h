@@ -31,9 +31,26 @@ struct SystematicConfig {
     std::vector<std::string> ResolveBins(const ABCDConfig& abcd) const;
 };
 
+// Explicit ABCD axis definitions (new format)
+struct AxisConfig {
+    std::string name;        // axis name (e.g., "Ntype", "Sxy")
+    std::string low_desc;    // description for low region
+    std::string high_desc;   // description for high region
+    std::vector<std::string> low_cuts;   // cuts for low region
+    std::vector<std::string> high_cuts;  // cuts for high region
+};
+
 struct ABCDConfig {
+    // Old format support
     std::map<std::string, std::string> regions;  // region_A -> bin_name mapping
-    std::string predicted_region;                 // which region is predicted
+    
+    // New explicit format support  
+    AxisConfig x_axis;                           // X-axis definition
+    AxisConfig y_axis;                           // Y-axis definition
+    std::vector<std::string> common_cuts;       // common cuts for all regions
+    bool use_explicit_format;                   // flag to indicate which format is used
+    
+    std::string predicted_region;                 // which region is predicted (A, B, C, or D)
     std::string formula;                          // ABCD formula (default: "(@0*@1/@2)")
     bool generate_datacards;                      // whether to generate CombineHarvester datacards
     
@@ -66,8 +83,7 @@ struct ABCDConfig {
     }
     
     bool IsValid() const {
-        return regions.size() == 4 && !predicted_region.empty() && 
-               regions.find(predicted_region) != regions.end();
+        return regions.size() == 4;  // Just require 4 regions, predicted region handled at BF step
     }
 };
 
@@ -120,6 +136,7 @@ private:
     AnalysisConfig config_;
     bool LoadYAML(const std::string& config_file);
     void SetDefaults();
+    void GenerateABCDBinsFromAxes();  // Generate ABCD bins from explicit axis definitions
 };
 
 #endif

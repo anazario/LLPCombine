@@ -98,9 +98,23 @@ public:
                     parseKeyValue(line, current_section, "", current_anchor_key);
                 }
             } else {
-                // Third level or list items
-                parseKeyValue(line, current_section, current_subsection, current_anchor_key);
-            }
+	      // Third level or list items (like cuts: - "...")
+	      static std::string current_key = "";
+	      
+	      if (line.back() == ':') {
+		// We're entering a subkey, e.g. "cuts:"
+		current_key = line.substr(0, line.length() - 1);
+		current_key.erase(0, current_key.find_first_not_of(" \t"));
+		current_key.erase(current_key.find_last_not_of(" \t") + 1);
+	      } else {
+		// If we're in a nested list context, append current_key
+		std::string subsection_full = current_subsection;
+		if (!current_key.empty()) {
+		  subsection_full += "." + current_key;
+		}
+		parseKeyValue(line, current_section, subsection_full, current_anchor_key);
+	      }
+	    }
         }
         
         return true;
@@ -298,17 +312,51 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     
     // Parse ABCD configuration if method is ABCD
     if (config_.method == "ABCD") {
-        // Parse ABCD regions - only process keys that start with "abcd.regions."
-        for (const auto& pair : parser.values) {
-            if (pair.first.find("abcd.regions.") == 0) {
-                std::string region_name = pair.first.substr(13); // Remove "abcd.regions."
-                config_.abcd.regions[region_name] = pair.second;
+        // Check if using explicit x_axis/y_axis format
+        bool has_explicit_format = parser.values.count("x_axis.name") > 0;
+        
+        
+        if (has_explicit_format) {
+            // Parse explicit format
+            config_.abcd.use_explicit_format = true;
+            
+            // Parse x_axis
+            config_.abcd.x_axis.name = parser.values["x_axis.name"];
+            config_.abcd.x_axis.low_desc = parser.values["x_axis.x_low.description"];  
+            config_.abcd.x_axis.high_desc = parser.values["x_axis.x_high.description"];
+            config_.abcd.x_axis.low_cuts = parser.lists["x_axis.x_low.cuts"];
+            config_.abcd.x_axis.high_cuts = parser.lists["x_axis.x_high.cuts"];
+            
+            // Parse y_axis  
+            config_.abcd.y_axis.name = parser.values["y_axis.name"];
+            config_.abcd.y_axis.low_desc = parser.values["y_axis.y_low.description"];
+            config_.abcd.y_axis.high_desc = parser.values["y_axis.y_high.description"]; 
+            config_.abcd.y_axis.low_cuts = parser.lists["y_axis.y_low.cuts"];
+            config_.abcd.y_axis.high_cuts = parser.lists["y_axis.y_high.cuts"];
+            
+            // Parse common cuts
+            if (parser.lists.count("abcd.common_cuts")) {
+                config_.abcd.common_cuts = parser.lists["abcd.common_cuts"];
+            }
+            
+            // Generate ABCD bins dynamically from axis definitions
+            GenerateABCDBinsFromAxes();
+            
+        } else {
+            // Parse old format (regions)
+            config_.abcd.use_explicit_format = false;
+            for (const auto& pair : parser.values) {
+                if (pair.first.find("abcd.regions.") == 0) {
+                    std::string region_name = pair.first.substr(13); // Remove "abcd.regions."
+                    config_.abcd.regions[region_name] = pair.second;
+                }
             }
         }
         
-        if (parser.values.count("abcd.predicted_region")) {
-            config_.abcd.predicted_region = parser.values["abcd.predicted_region"];
-        }
+        // Skip predicted_region parsing - will be handled at BF step
+        // if (parser.values.count("abcd.predicted_region")) {
+        //     config_.abcd.predicted_region = parser.values["abcd.predicted_region"];
+        // }
         
         if (parser.values.count("abcd.formula")) {
             config_.abcd.formula = parser.values["abcd.formula"];
@@ -775,4 +823,174 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
         
         systematics.push_back(syst);
     }
+}
+
+void ConfigParser::GenerateABCDBinsFromAxes() {
+    // Generate ABCD bins dynamically from x_axis and y_axis definitions
+    // A = [x_low, y_high], B = [x_high, y_high], C = [x_low, y_low], D = [x_high, y_low]
+    
+    if (!config_.abcd.use_explicit_format) {
+        return;
+    }
+    
+    // Helper function to filter cuts for specific SV type
+    auto filterCutsForSV = [](const std::vector<std::string>& cuts, const std::string& sv_type) {
+        std::vector<std::string> filtered_cuts;
+        for (const std::string& cut : cuts) {
+            // Check if this is an SV-specific cut
+            if (cut.find("LeptonicSV_") == 0 && sv_type == "nLeptonic") {
+                filtered_cuts.push_back(cut);
+            } else if (cut.find("HadronicSV_") == 0 && sv_type == "nHadronic") {
+                filtered_cuts.push_back(cut);
+            } else if (cut.find("SV_") == 0 || cut.find("rjr_") == 0) {
+                // Non-SV-specific cuts (like SV_nLeptonic, rjr_Ms, etc.) - include always
+                filtered_cuts.push_back(cut);
+            }
+        }
+        return filtered_cuts;
+    };
+    
+    // Generate bin names based on axis names
+    std::string bin_prefix = config_.abcd.x_axis.name + "_" + config_.abcd.y_axis.name + "_";
+    
+    // Create regions mapping
+    config_.abcd.regions["region_A"] = bin_prefix + "A";
+    config_.abcd.regions["region_B"] = bin_prefix + "B"; 
+    config_.abcd.regions["region_C"] = bin_prefix + "C";
+    config_.abcd.regions["region_D"] = bin_prefix + "D";
+    
+    // Determine SV types from x_axis cuts
+    std::string sv_type_low = "", sv_type_high = "";
+    for (const std::string& cut : config_.abcd.x_axis.low_cuts) {
+        if (cut.find("SV_nLeptonic") != std::string::npos) sv_type_low = "nLeptonic";
+        else if (cut.find("SV_nHadronic") != std::string::npos) sv_type_low = "nHadronic";
+    }
+    for (const std::string& cut : config_.abcd.x_axis.high_cuts) {
+        if (cut.find("SV_nLeptonic") != std::string::npos) sv_type_high = "nLeptonic";
+        else if (cut.find("SV_nHadronic") != std::string::npos) sv_type_high = "nHadronic";
+    }
+    
+    // Generate Region A: [x_low, y_high]
+    BinConfig bin_a;
+    bin_a.name = bin_prefix + "A";
+    bin_a.description = config_.abcd.x_axis.low_desc + ", " + config_.abcd.y_axis.high_desc;
+    
+    // Add common cuts
+    bin_a.cuts.insert(bin_a.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
+    
+    // Add x_low cuts
+    bin_a.cuts.insert(bin_a.cuts.end(), config_.abcd.x_axis.low_cuts.begin(), config_.abcd.x_axis.low_cuts.end());
+    
+    // Add y_high cuts, filtered for the appropriate SV type
+    auto y_high_filtered = filterCutsForSV(config_.abcd.y_axis.high_cuts, sv_type_low);
+    bin_a.cuts.insert(bin_a.cuts.end(), y_high_filtered.begin(), y_high_filtered.end());
+    
+    config_.bins.push_back(bin_a);
+    
+    // Generate Region B: [x_high, y_high]
+    BinConfig bin_b;
+    bin_b.name = bin_prefix + "B";
+    bin_b.description = config_.abcd.x_axis.high_desc + ", " + config_.abcd.y_axis.high_desc;
+    
+    // Add common cuts
+    bin_b.cuts.insert(bin_b.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
+    
+    // Add x_high cuts
+    bin_b.cuts.insert(bin_b.cuts.end(), config_.abcd.x_axis.high_cuts.begin(), config_.abcd.x_axis.high_cuts.end());
+    
+    // Add y_high cuts, filtered for the appropriate SV type
+    y_high_filtered = filterCutsForSV(config_.abcd.y_axis.high_cuts, sv_type_high);
+    bin_b.cuts.insert(bin_b.cuts.end(), y_high_filtered.begin(), y_high_filtered.end());
+    
+    config_.bins.push_back(bin_b);
+    
+    // Generate Region C: [x_low, y_low]
+    BinConfig bin_c;
+    bin_c.name = bin_prefix + "C";
+    bin_c.description = config_.abcd.x_axis.low_desc + ", " + config_.abcd.y_axis.low_desc;
+    
+    // Add common cuts
+    bin_c.cuts.insert(bin_c.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
+    
+    // Add x_low cuts
+    bin_c.cuts.insert(bin_c.cuts.end(), config_.abcd.x_axis.low_cuts.begin(), config_.abcd.x_axis.low_cuts.end());
+    
+    // Add y_low cuts, filtered for the appropriate SV type
+    auto y_low_filtered = filterCutsForSV(config_.abcd.y_axis.low_cuts, sv_type_low);
+    bin_c.cuts.insert(bin_c.cuts.end(), y_low_filtered.begin(), y_low_filtered.end());
+    
+    config_.bins.push_back(bin_c);
+    
+    // Generate Region D: [x_high, y_low]
+    BinConfig bin_d;
+    bin_d.name = bin_prefix + "D";
+    bin_d.description = config_.abcd.x_axis.high_desc + ", " + config_.abcd.y_axis.low_desc;
+    
+    // Add common cuts
+    bin_d.cuts.insert(bin_d.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
+    
+    // Add x_high cuts
+    bin_d.cuts.insert(bin_d.cuts.end(), config_.abcd.x_axis.high_cuts.begin(), config_.abcd.x_axis.high_cuts.end());
+    
+    // Add y_low cuts, filtered for the appropriate SV type
+    y_low_filtered = filterCutsForSV(config_.abcd.y_axis.low_cuts, sv_type_high);
+    bin_d.cuts.insert(bin_d.cuts.end(), y_low_filtered.begin(), y_low_filtered.end());
+    
+    config_.bins.push_back(bin_d);
+    
+    // Always show debug output for now to see what's happening
+    std::cout << "\n=== Generated ABCD Regions ===" << std::endl;
+    std::cout << "\n=== DEBUG: Generated ABCD Regions ===" << std::endl;
+    std::cout << "X-axis: " << config_.abcd.x_axis.name << std::endl;
+    std::cout << "Y-axis: " << config_.abcd.y_axis.name << std::endl;
+    std::cout << "------------------------------------" << std::endl;
+
+    for (const auto& region : config_.abcd.regions) {
+      const std::string& region_key = region.first;
+      const std::string& bin_name = region.second;
+
+      auto it = std::find_if(config_.bins.begin(), config_.bins.end(),
+			     [&](const BinConfig& b) { return b.name == bin_name; });
+
+      if (it == config_.bins.end()) continue;
+
+      const auto& bin = *it;
+
+      std::cout << region_key << " (" << bin.name << "): "
+		<< bin.description << std::endl;
+
+      for (const std::string& cut : bin.cuts) {
+        std::cout << "   - " << cut << std::endl;
+      }
+
+      // Optional: combined expression to verify parentheses and logic
+      std::cout << "   Combined: " << GetCombinedCuts(bin.name) << std::endl;
+      std::cout << "------------------------------------" << std::endl;
+    }
+
+    std::cout << "====================================" << std::endl;
+
+    std::cout << "X-axis: " << config_.abcd.x_axis.name << std::endl;
+    std::cout << "Y-axis: " << config_.abcd.y_axis.name << std::endl;
+    std::cout << "X-low cuts: " << config_.abcd.x_axis.low_cuts.size() << std::endl;
+    std::cout << "X-high cuts: " << config_.abcd.x_axis.high_cuts.size() << std::endl;
+    std::cout << "Y-low cuts: " << config_.abcd.y_axis.low_cuts.size() << std::endl;
+    std::cout << "Y-high cuts: " << config_.abcd.y_axis.high_cuts.size() << std::endl;
+    std::cout << "Common cuts: " << config_.abcd.common_cuts.size() << " cuts" << std::endl;
+    for (const auto& bin : config_.bins) {
+      if (bin.name.find("_A") != std::string::npos || bin.name.find("_B") != std::string::npos || 
+	  bin.name.find("_C") != std::string::npos || bin.name.find("_D") != std::string::npos) {
+	std::cout << "  " << bin.name << ": " << bin.description << std::endl;
+	std::cout << "    Cuts (" << bin.cuts.size() << "): ";
+	for (const auto& cut : bin.cuts) {
+	  std::cout << "\"" << cut << "\" ";
+	}
+	std::cout << std::endl;
+      }
+    }
+    std::cout << "Regions mapping:" << std::endl;
+    for (const auto& region : config_.abcd.regions) {
+      std::cout << "  " << region.first << " -> " << region.second << std::endl;
+    }
+    std::cout << "=========================" << std::endl;
 }
