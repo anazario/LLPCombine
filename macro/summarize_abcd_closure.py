@@ -384,7 +384,7 @@ def calculate_closure_metrics(abcd_info):
         }
     }
 
-def print_closure_summary(closure_data, signal_name):
+def print_closure_summary(closure_data, signal_name, region_cuts=None):
     """Print a formatted summary of the closure test"""
     if not closure_data:
         print(f"❌ Could not extract closure data for {signal_name}")
@@ -407,6 +407,16 @@ def print_closure_summary(closure_data, signal_name):
     print(f"   Region B: {abcd_mapping['B']} {'← PREDICTED' if predicted_region == 'B' else ''}")  
     print(f"   Region C: {abcd_mapping['C']} {'← PREDICTED' if predicted_region == 'C' else ''}")
     print(f"   Region D: {abcd_mapping['D']} {'← PREDICTED' if predicted_region == 'D' else ''}")
+    
+    # Display region cuts if available
+    if region_cuts:
+        print(f"\n🔍 REGION CUTS:")
+        for region in ['A', 'B', 'C', 'D']:
+            if region in region_cuts:
+                print(f"   Region {region} ({abcd_mapping[region]}):")
+                for i, cut in enumerate(region_cuts[region], 1):
+                    print(f"      {i}. {cut}")
+                print()  # Add spacing between regions
     
     print(f"\n📈 TRUE YIELDS:")
     print(f"   Region A: {yields['A']:8.1f}")
@@ -449,10 +459,63 @@ def print_closure_summary(closure_data, signal_name):
     else:
         print(f"   ❌ Significant bias: >20% deviation from expectation")
 
+def extract_abcd_mapping_from_config(config_file):
+    """Extract ABCD region mapping from config file"""
+    try:
+        import yaml
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        if 'abcd' in config and 'regions' in config['abcd']:
+            regions = config['abcd']['regions']
+            # Convert region_A -> A, etc.
+            mapping = {}
+            for region_key, bin_name in regions.items():
+                if region_key.startswith('region_'):
+                    letter = region_key.split('_')[1]  # region_A -> A
+                    mapping[letter] = bin_name
+            
+            predicted_region = config['abcd'].get('predicted_region', 'region_A')
+            predicted_letter = predicted_region.split('_')[1] if predicted_region.startswith('region_') else 'A'
+            
+            return mapping, predicted_letter
+        
+        return None, None
+    except Exception as e:
+        print(f"Warning: Could not extract ABCD mapping from config file: {e}")
+        return None, None
+
+def extract_region_cuts(config_file, abcd_mapping):
+    """Extract region cuts from ABCD config file"""
+    try:
+        import yaml
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        region_cuts = {}
+        if 'bins' in config:
+            for region_letter, bin_name in abcd_mapping.items():
+                if bin_name in config['bins'] and 'cuts' in config['bins'][bin_name]:
+                    cuts = config['bins'][bin_name]['cuts']
+                    # Handle YAML anchors by flattening the list
+                    flattened_cuts = []
+                    for cut in cuts:
+                        if isinstance(cut, list):
+                            flattened_cuts.extend(cut)
+                        else:
+                            flattened_cuts.append(cut)
+                    region_cuts[region_letter] = flattened_cuts
+        
+        return region_cuts
+    except Exception as e:
+        print(f"Warning: Could not extract cuts from config file: {e}")
+        return {}
+
 def main():
     parser = argparse.ArgumentParser(description="Summarize ABCD closure test results")
     parser.add_argument("datacard_dir", help="Directory containing fit results")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    parser.add_argument("-c", "--config", help="ABCD config file (optional, to display region cuts)")
     
     args = parser.parse_args()
     
@@ -480,12 +543,25 @@ def main():
         abcd_info = extract_abcd_info(fit_file, args.verbose)
         if not abcd_info:
             continue
-            
+        
+        # Override ABCD mapping with config file if provided
+        if args.config and os.path.exists(args.config):
+            config_mapping, config_predicted = extract_abcd_mapping_from_config(args.config)
+            if config_mapping:
+                print(f"Using ABCD mapping from config file: {args.config}")
+                abcd_info['abcd_mapping'] = config_mapping
+                abcd_info['predicted_region'] = config_predicted
+        
         # Calculate closure metrics
         closure_data = calculate_closure_metrics(abcd_info)
         
+        # Extract region cuts if config file provided
+        region_cuts = None
+        if args.config and os.path.exists(args.config):
+            region_cuts = extract_region_cuts(args.config, abcd_info['abcd_mapping'])
+        
         # Print summary
-        print_closure_summary(closure_data, signal_name)
+        print_closure_summary(closure_data, signal_name, region_cuts)
     
     return 0
 
