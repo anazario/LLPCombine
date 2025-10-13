@@ -549,8 +549,14 @@ def main():
             config_mapping, config_predicted = extract_abcd_mapping_from_config(args.config)
             if config_mapping:
                 print(f"Using ABCD mapping from config file: {args.config}")
+                print(f"DEBUG: Config mapping: {config_mapping}")
+                print(f"DEBUG: Config predicted: {config_predicted}")
+                print(f"DEBUG: Old mapping: {abcd_info['abcd_mapping']}")
                 abcd_info['abcd_mapping'] = config_mapping
                 abcd_info['predicted_region'] = config_predicted
+                print(f"DEBUG: New mapping: {abcd_info['abcd_mapping']}")
+            else:
+                print(f"DEBUG: Failed to extract mapping from config file")
         
         # Calculate closure metrics
         closure_data = calculate_closure_metrics(abcd_info)
