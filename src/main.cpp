@@ -9,8 +9,21 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <algorithm>  // for std::find
+#include <cstdlib>    // for system() calls
+#include <memory>     // for smart pointers
 
 using std::string;
+
+// Function to copy text to clipboard (macOS/Linux compatible)
+void copyToClipboard(const std::string& text) {
+#ifdef __APPLE__
+    std::string cmd = "echo '" + text + "' | pbcopy";
+#else // Linux
+    std::string cmd = "echo '" + text + "' | xclip -selection clipboard";
+#endif
+    int result = std::system(cmd.c_str());
+    (void)result; // Suppress unused variable warning
+}
 
 // Function to process a single configuration file
 int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& options) {
@@ -59,7 +72,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	}
 	
 	// Initialize SampleTool with configuration
-	SampleTool* ST = new SampleTool();
+	auto ST = std::make_unique<SampleTool>();
 	
 	// Convert vectors to the expected stringlist format
 	stringlist bkglist(config.backgrounds.begin(), config.backgrounds.end());
@@ -162,7 +175,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	}
 	
 	// Initialize BuildFitInput
-	BuildFitInput* BFI = new BuildFitInput();
+	auto BFI = std::make_unique<BuildFitInput>();
 	BFI->LoadData_byMap(ST->DataDict, luminosity);
 	BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
 	BFI->LoadSig_byMap(ST->SigDict, luminosity);
@@ -212,7 +225,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	
 	// Write output JSON
 	std::string output_path = output_dir + config.output_json;
-	JSONFactory* json = new JSONFactory(BFI->analysisbins);
+	auto json = std::make_unique<JSONFactory>(BFI->analysisbins);
 	json->WriteJSON(output_path);
 	
 	if (verbosity > 0) {
@@ -223,23 +236,28 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 		}
 	}
 	
-	// Note: ABCD datacard generation is handled by BFmain.x (CMSSW-dependent)
+	// Generate BF.x command and copy to clipboard
+	std::string bf_command = "./BF.x " + output_path;
 	if (config.method == "ABCD") {
+		bf_command += " " + config_file;
 		if (verbosity > 1) {
 			std::cout << "\nABCD method detected - JSON created with ABCD configuration." << std::endl;
-			std::cout << "To generate ABCD datacards, use: BF.x " << output_path << std::endl;
+			std::cout << "To generate ABCD datacards, use: " << bf_command << std::endl;
 		}
 	} else if (config.method == "standard") {
 		if (verbosity > 1) {
 			std::cout << "\nUsing standard analysis method" << std::endl;
+			std::cout << "To generate datacards, use: " << bf_command << std::endl;
 		}
 	}
 	
-	// Cleanup
-	delete json;
-	delete BFI;
-	delete ST;
+	// Copy BF.x command to clipboard for easy access
+	copyToClipboard(bf_command);
+	if (verbosity > 0) {
+		std::cout << "📋 BF.x command copied to clipboard: " << bf_command << std::endl;
+	}
 	
+	// Smart pointers automatically clean up
 	return 0;
 }
 
