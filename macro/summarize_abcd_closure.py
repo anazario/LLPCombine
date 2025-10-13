@@ -14,6 +14,7 @@ import glob
 import ROOT
 import json
 import argparse
+import datetime
 from math import sqrt
 
 def find_fit_files(datacard_dir):
@@ -521,11 +522,55 @@ def extract_region_cuts(config_file, abcd_mapping):
         print(f"Warning: Could not extract cuts from config file: {e}")
         return {}
 
+def save_results_json(closure_data, signal_name, config_file, output_dir, region_cuts=None):
+    """Save closure test results to JSON file"""
+    if not closure_data:
+        return None
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate filename
+    config_name = "unknown"
+    if config_file:
+        config_name = os.path.splitext(os.path.basename(config_file))[0]
+    
+    filename = f"{signal_name}_{config_name}_closure_results.json"
+    filepath = os.path.join(output_dir, filename)
+    
+    # Prepare results dictionary
+    results = {
+        "analysis_info": {
+            "signal_name": signal_name,
+            "config_file": config_file,
+            "timestamp": datetime.datetime.now().isoformat()
+        },
+        "region_mapping": closure_data["regions"]["abcd_mapping"],
+        "predicted_region": closure_data["regions"]["predicted_region"],
+        "predicted_bin": closure_data["regions"]["predicted_bin"],
+        "yields": closure_data["yields"],
+        "scale_factors": closure_data["scale_factors"],
+        "predictions": closure_data["predictions"],
+        "closure_metrics": closure_data["closure_metrics"]
+    }
+    
+    # Add region cuts if available
+    if region_cuts:
+        results["region_cuts"] = region_cuts
+    
+    # Save to JSON
+    with open(filepath, 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    return filepath
+
 def main():
     parser = argparse.ArgumentParser(description="Summarize ABCD closure test results")
     parser.add_argument("datacard_dir", help="Directory containing fit results")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("-c", "--config", help="ABCD config file (optional, to display region cuts)")
+    parser.add_argument("--json-output-dir", default="results/fit_json", help="Directory to save JSON results (default: results/fit_json)")
+    parser.add_argument("--no-json", action="store_true", help="Skip JSON output generation")
     
     args = parser.parse_args()
     
@@ -585,6 +630,13 @@ def main():
         
         # Print summary
         print_closure_summary(closure_data, signal_name, region_cuts)
+        
+        # Save JSON results if not disabled
+        if not args.no_json:
+            json_file = save_results_json(closure_data, signal_name, args.config, 
+                                        args.json_output_dir, region_cuts)
+            if json_file:
+                print(f"\n💾 Results saved to: {json_file}")
     
     return 0
 
