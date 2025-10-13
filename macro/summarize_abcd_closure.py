@@ -293,13 +293,23 @@ def calculate_closure_metrics(abcd_info):
     params = abcd_info["params"]
     data_yields = abcd_info["data_yields"]
     
-    # Identify regions
-    regions = identify_abcd_regions(data_yields, params)
-    if not regions or not regions.get("predicted_region"):
-        return None
-    
-    abcd_mapping = regions["abcd_mapping"] 
-    predicted_region = regions["predicted_region"]
+    # Use existing ABCD mapping from config if available, otherwise auto-detect
+    if 'abcd_mapping' in abcd_info and 'predicted_region' in abcd_info:
+        # Use mapping from config file
+        abcd_mapping = abcd_info['abcd_mapping']
+        predicted_region = abcd_info['predicted_region']
+        regions = {
+            "abcd_mapping": abcd_mapping,
+            "predicted_region": predicted_region,
+            "predicted_bin": abcd_mapping.get(predicted_region)
+        }
+    else:
+        # Fall back to auto-detection
+        regions = identify_abcd_regions(data_yields, params)
+        if not regions or not regions.get("predicted_region"):
+            return None
+        abcd_mapping = regions["abcd_mapping"] 
+        predicted_region = regions["predicted_region"]
     
     # Get yields for all ABCD regions
     yield_A = data_yields.get(abcd_mapping["A"], 0)
@@ -568,7 +578,10 @@ def main():
         # Extract region cuts if config file provided
         region_cuts = None
         if args.config and os.path.exists(args.config):
-            region_cuts = extract_region_cuts(args.config, abcd_info['abcd_mapping'])
+            # Use the mapping that will be used in the closure calculation
+            mapping_for_cuts = abcd_info.get('abcd_mapping')
+            if mapping_for_cuts:
+                region_cuts = extract_region_cuts(args.config, mapping_for_cuts)
         
         # Print summary
         print_closure_summary(closure_data, signal_name, region_cuts)
