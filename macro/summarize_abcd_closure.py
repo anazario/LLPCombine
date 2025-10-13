@@ -551,7 +551,11 @@ def main():
                 print(f"Using ABCD mapping from config file: {args.config}")
                 print(f"DEBUG: Config mapping: {config_mapping}")
                 print(f"DEBUG: Config predicted: {config_predicted}")
-                print(f"DEBUG: Old mapping: {abcd_info['abcd_mapping']}")
+                print(f"DEBUG: abcd_info keys: {abcd_info.keys()}")
+                if 'abcd_mapping' in abcd_info:
+                    print(f"DEBUG: Old mapping: {abcd_info['abcd_mapping']}")
+                else:
+                    print(f"DEBUG: No 'abcd_mapping' key found, creating new one")
                 abcd_info['abcd_mapping'] = config_mapping
                 abcd_info['predicted_region'] = config_predicted
                 print(f"DEBUG: New mapping: {abcd_info['abcd_mapping']}")
