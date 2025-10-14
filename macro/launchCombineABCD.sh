@@ -5,12 +5,13 @@
 
 # Function to show usage
 show_usage() {
-    echo "Usage: $0 [OPTIONS] <datacard_directory>"
+    echo "Usage: $0 [OPTIONS] <datacard_directory1> [datacard_directory2] ..."
     echo ""
     echo "Run CMS Combine ABCD analysis on generated datacards"
     echo ""
     echo "Arguments:"
-    echo "  <datacard_directory>    Directory containing ABCD datacards"
+    echo "  <datacard_directory>    One or more directories containing ABCD datacards"
+    echo "                          Supports glob patterns like datacards_Predict*"
     echo ""
     echo "Options:"
     echo "  -h, --help             Show this help message"
@@ -21,14 +22,16 @@ show_usage() {
     echo "  --fit-only             Only run fit diagnostics (skip t2w)"
     echo ""
     echo "Examples:"
-    echo "  $0 datacards                    # Basic ABCD analysis"
-    echo "  $0 -v -j 4 datacards_abcd     # Verbose with 4 parallel jobs"
-    echo "  $0 --t2w-only datacards       # Only create workspaces"
-    echo "  $0 --fit-only datacards       # Only run fit (workspaces must exist)"
+    echo "  $0 datacards                          # Basic ABCD analysis"
+    echo "  $0 -v -j 4 datacards_abcd           # Verbose with 4 parallel jobs"
+    echo "  $0 datacards_PredictA datacards_PredictB   # Multiple directories"
+    echo "  $0 datacards_Predict*               # Using glob pattern"
+    echo "  $0 --t2w-only datacards             # Only create workspaces"
+    echo "  $0 --fit-only datacards             # Only run fit (workspaces must exist)"
 }
 
 # Default values
-dcdir=""
+dcdirs=()  # Array to hold multiple datacard directories
 verbose=false
 use_toys=false
 jobs=1
@@ -68,48 +71,59 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            if [ -z "$dcdir" ]; then
-                dcdir="$1"
-            else
-                echo "Error: Multiple datacard directories specified"
-                show_usage
-                exit 1
-            fi
+            # Add datacard directory to array
+            dcdirs+=("$1")
             shift
             ;;
     esac
 done
 
-# Check if datacard directory was provided
-if [ -z "$dcdir" ]; then
+# Check if at least one datacard directory was provided
+if [ ${#dcdirs[@]} -eq 0 ]; then
     echo "Error: No datacard directory specified"
     show_usage
     exit 1
 fi
 
-# Check if the datacard directory exists
-if [ ! -d "${dcdir}" ]; then
-    echo "Error: Datacard directory '${dcdir}' not found"
-    exit 1
-fi
+# Check if all datacard directories exist and contain .txt files
+valid_dirs=()
+for dcdir in "${dcdirs[@]}"; do
+    if [ ! -d "${dcdir}" ]; then
+        echo "Warning: Datacard directory '${dcdir}' not found, skipping"
+        continue
+    fi
+    
+    if ! ls ${dcdir}/*/*.txt 1> /dev/null 2>&1; then
+        echo "Warning: No datacard files (*.txt) found in ${dcdir}/*/, skipping"
+        continue
+    fi
+    
+    valid_dirs+=("${dcdir}")
+done
 
-# Check if there are any signal subdirectories with .txt files
-if ! ls ${dcdir}/*/*.txt 1> /dev/null 2>&1; then
-    echo "Error: No datacard files (*.txt) found in ${dcdir}/*/."
+# Check if we have any valid directories
+if [ ${#valid_dirs[@]} -eq 0 ]; then
+    echo "Error: No valid datacard directories found"
     echo "Make sure ABCD datacards were generated properly using BF.x"
     exit 1
 fi
 
 echo "=== CMS Combine ABCD Analysis ==="
-echo "Datacard directory: ${dcdir}"
+echo "Processing ${#valid_dirs[@]} datacard directories:"
+for dcdir in "${valid_dirs[@]}"; do
+    echo "  - ${dcdir}"
+done
 echo "Parallel jobs: ${jobs}"
 echo "Use toy data: ${use_toys}"
 echo "Verbose: ${verbose}"
 echo ""
 
 if [ "$verbose" = true ]; then
-    echo "Found signal directories:"
-    ls -d ${dcdir}/*/
+    echo "Found signal directories in each datacard directory:"
+    for dcdir in "${valid_dirs[@]}"; do
+        echo "  ${dcdir}:"
+        ls -d ${dcdir}/*/
+    done
     echo ""
 fi
 
@@ -128,11 +142,22 @@ fi
 # Step 1: Text2Workspace conversion
 if [ "$fit_only" = false ]; then
     echo "Step 1: Converting datacards to workspaces..."
+    
+    # Build the input pattern for all directories
+    input_pattern=""
+    for dcdir in "${valid_dirs[@]}"; do
+        if [ -n "$input_pattern" ]; then
+            input_pattern="${input_pattern} ${dcdir}/*/*.txt"
+        else
+            input_pattern="${dcdir}/*/*.txt"
+        fi
+    done
+    
     if [ "$verbose" = true ]; then
-        echo "Running: combineTool.py -M T2W -i ${dcdir}/*/*.txt -o ws.root --parallel ${jobs} ${verbose_opts}"
+        echo "Running: combineTool.py -M T2W -i ${input_pattern} -o ws.root --parallel ${jobs} ${verbose_opts}"
     fi
     
-    combineTool.py -M T2W -i ${dcdir}/*/*.txt -o ws.root --parallel ${jobs} ${verbose_opts}
+    combineTool.py -M T2W -i ${input_pattern} -o ws.root --parallel ${jobs} ${verbose_opts}
     
     if [ $? -ne 0 ]; then
         echo "Error: Text2Workspace conversion failed"
@@ -146,11 +171,22 @@ fi
 # Step 2: Fit Diagnostics
 if [ "$t2w_only" = false ]; then
     echo "Step 2: Running fit diagnostics..."
+    
+    # Build the workspace pattern for all directories
+    workspace_pattern=""
+    for dcdir in "${valid_dirs[@]}"; do
+        if [ -n "$workspace_pattern" ]; then
+            workspace_pattern="${workspace_pattern} ${dcdir}/*/ws.root"
+        else
+            workspace_pattern="${dcdir}/*/ws.root"
+        fi
+    done
+    
     if [ "$verbose" = true ]; then
-        echo "Running: combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties ${toy_opts} -d ${dcdir}/*/ws.root --there --parallel ${jobs} ${verbose_opts}"
+        echo "Running: combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties ${toy_opts} -d ${workspace_pattern} --there --parallel ${jobs} ${verbose_opts}"
     fi
     
-    combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties --robustFit 1 ${toy_opts} -d ${dcdir}/*/ws.root --there --parallel ${jobs} ${verbose_opts}
+    combineTool.py -M FitDiagnostics --saveShapes --saveWithUncertainties --robustFit 1 ${toy_opts} -d ${workspace_pattern} --there --parallel ${jobs} ${verbose_opts}
     
     if [ $? -ne 0 ]; then
         echo "Error: Fit diagnostics failed"
@@ -162,7 +198,10 @@ if [ "$t2w_only" = false ]; then
 fi
 
 echo "=== ABCD Analysis Complete ==="
-echo "Results are located in the individual signal directories under ${dcdir}/"
+echo "Results are located in the individual signal directories under:"
+for dcdir in "${valid_dirs[@]}"; do
+    echo "  - ${dcdir}/"
+done
 echo ""
 
 if [ "$verbose" = true ]; then
