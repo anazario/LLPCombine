@@ -470,19 +470,94 @@ def print_closure_summary(closure_data, signal_name, region_cuts=None):
     else:
         print(f"   ❌ Significant bias: >20% deviation from expectation")
 
+def extract_mapping_manual_parsing(content, predict_override=None):
+    """Manual parsing fallback for when YAML fails"""
+    import re
+    
+    # Extract x_axis and y_axis names using regex
+    x_axis_match = re.search(r'x_axis:\s*\n\s*name:\s*["\']?([^"\'\n]+)["\']?', content)
+    y_axis_match = re.search(r'y_axis:\s*\n\s*name:\s*["\']?([^"\'\n]+)["\']?', content)
+    
+    if not x_axis_match or not y_axis_match:
+        return None, None, {}
+    
+    x_name = x_axis_match.group(1).strip()
+    y_name = y_axis_match.group(1).strip()
+    
+    # Extract axis descriptions
+    x_low_desc = ""
+    x_high_desc = ""
+    y_low_desc = ""
+    y_high_desc = ""
+    
+    x_low_match = re.search(r'x_low:\s*\n\s*description:\s*["\']?([^"\'\n]+)["\']?', content)
+    if x_low_match:
+        x_low_desc = x_low_match.group(1).strip()
+    
+    x_high_match = re.search(r'x_high:\s*\n\s*description:\s*["\']?([^"\'\n]+)["\']?', content)
+    if x_high_match:
+        x_high_desc = x_high_match.group(1).strip()
+    
+    y_low_match = re.search(r'y_low:\s*\n\s*description:\s*["\']?([^"\'\n]+)["\']?', content)
+    if y_low_match:
+        y_low_desc = y_low_match.group(1).strip()
+    
+    y_high_match = re.search(r'y_high:\s*\n\s*description:\s*["\']?([^"\'\n]+)["\']?', content)
+    if y_high_match:
+        y_high_desc = y_high_match.group(1).strip()
+    
+    # Build the structures
+    mapping = {
+        'A': f"{x_name}_{y_name}_A",
+        'B': f"{x_name}_{y_name}_B", 
+        'C': f"{x_name}_{y_name}_C",
+        'D': f"{x_name}_{y_name}_D"
+    }
+    
+    axis_info = {
+        'x_axis': {
+            'name': x_name,
+            'low_desc': x_low_desc,
+            'high_desc': x_high_desc
+        },
+        'y_axis': {
+            'name': y_name,
+            'low_desc': y_low_desc,
+            'high_desc': y_high_desc
+        }
+    }
+    
+    predicted_letter = predict_override if predict_override else 'A'
+    
+    print(f"  DEBUG: Manual parsing extracted x_axis='{x_name}', y_axis='{y_name}'")
+    return mapping, predicted_letter, axis_info
+
 def extract_abcd_mapping_from_config(config_file, predict_override=None):
     """Extract ABCD region mapping and axis info from config file"""
     try:
         import yaml
         print(f"  DEBUG: Attempting to parse config file: {config_file}")
+        
+        # Try multiple YAML loading approaches
+        config = None
         with open(config_file, 'r') as f:
+            content = f.read()
+        
+        # Try different YAML loaders
+        for loader_name, loader in [("safe_load", yaml.safe_load), ("FullLoader", lambda x: yaml.load(x, Loader=yaml.FullLoader))]:
             try:
-                config = yaml.safe_load(f)
+                config = loader(content)
+                print(f"  DEBUG: Successfully loaded YAML config with {loader_name}")
+                break
             except yaml.YAMLError as ye:
-                print(f"  DEBUG: safe_load failed, trying load: {ye}")
-                f.seek(0)
-                config = yaml.load(f, Loader=yaml.FullLoader)
-        print(f"  DEBUG: Successfully loaded YAML config")
+                print(f"  DEBUG: {loader_name} failed: {ye}")
+                continue
+        
+        if config is None:
+            print(f"  DEBUG: All YAML loaders failed, falling back to manual parsing")
+            # Fallback to manual parsing for the new explicit format
+            return extract_mapping_manual_parsing(content, predict_override)
+        
         
         # Handle both old and new format
         axis_info = {}
@@ -542,19 +617,76 @@ def extract_abcd_mapping_from_config(config_file, predict_override=None):
         print(f"Warning: Could not extract ABCD mapping from config file: {e}")
         return None, None, None
 
+def extract_cuts_manual_parsing(content):
+    """Manual parsing fallback for region cuts"""
+    import re
+    
+    # Extract cuts from each axis section
+    x_low_cuts = []
+    x_high_cuts = []
+    y_low_cuts = []
+    y_high_cuts = []
+    
+    # Find x_low cuts
+    x_low_section = re.search(r'x_low:\s*(.*?)(?=\n\s*x_high:|$)', content, re.DOTALL)
+    if x_low_section:
+        cuts_matches = re.findall(r'-\s*["\']?([^"\'\n]+)["\']?', x_low_section.group(1))
+        x_low_cuts = [cut.strip() for cut in cuts_matches if not cut.startswith('description')]
+    
+    # Find x_high cuts
+    x_high_section = re.search(r'x_high:\s*(.*?)(?=\n\s*y_axis:|$)', content, re.DOTALL)
+    if x_high_section:
+        cuts_matches = re.findall(r'-\s*["\']?([^"\'\n]+)["\']?', x_high_section.group(1))
+        x_high_cuts = [cut.strip() for cut in cuts_matches if not cut.startswith('description')]
+    
+    # Find y_low cuts
+    y_low_section = re.search(r'y_low:\s*(.*?)(?=\n\s*y_high:|$)', content, re.DOTALL)
+    if y_low_section:
+        cuts_matches = re.findall(r'-\s*["\']?([^"\'\n]+)["\']?', y_low_section.group(1))
+        y_low_cuts = [cut.strip() for cut in cuts_matches if not cut.startswith('description')]
+    
+    # Find y_high cuts
+    y_high_section = re.search(r'y_high:\s*(.*?)(?=\n\s*abcd_common_cuts:|$)', content, re.DOTALL)
+    if y_high_section:
+        cuts_matches = re.findall(r'-\s*["\']?([^"\'\n]+)["\']?', y_high_section.group(1))
+        y_high_cuts = [cut.strip() for cut in cuts_matches if not cut.startswith('description')]
+    
+    # Build cuts for each region (A = x_low + y_high, B = x_high + y_high, etc.)
+    region_cuts = {
+        'A': x_low_cuts + y_high_cuts,   # x_low + y_high
+        'B': x_high_cuts + y_high_cuts,  # x_high + y_high  
+        'C': x_low_cuts + y_low_cuts,    # x_low + y_low
+        'D': x_high_cuts + y_low_cuts    # x_high + y_low
+    }
+    
+    print(f"  DEBUG: Manual parsing extracted cuts: A={len(region_cuts['A'])}, B={len(region_cuts['B'])}, C={len(region_cuts['C'])}, D={len(region_cuts['D'])}")
+    return region_cuts
+
 def extract_region_cuts(config_file, abcd_mapping):
     """Extract region cuts from ABCD config file"""
     try:
         import yaml
         print(f"  DEBUG: Extracting cuts from config file: {config_file}")
+        
+        # Try multiple YAML loading approaches
+        config = None
         with open(config_file, 'r') as f:
+            content = f.read()
+        
+        # Try different YAML loaders
+        for loader_name, loader in [("safe_load", yaml.safe_load), ("FullLoader", lambda x: yaml.load(x, Loader=yaml.FullLoader))]:
             try:
-                config = yaml.safe_load(f)
+                config = loader(content)
+                print(f"  DEBUG: Successfully loaded YAML for cuts extraction with {loader_name}")
+                break
             except yaml.YAMLError as ye:
-                print(f"  DEBUG: safe_load failed, trying load: {ye}")
-                f.seek(0)
-                config = yaml.load(f, Loader=yaml.FullLoader)
-        print(f"  DEBUG: Successfully loaded YAML for cuts extraction")
+                print(f"  DEBUG: {loader_name} failed for cuts: {ye}")
+                continue
+        
+        if config is None:
+            print(f"  DEBUG: All YAML loaders failed for cuts, falling back to manual parsing")
+            # Fallback to manual parsing
+            return extract_cuts_manual_parsing(content)
         
         region_cuts = {}
         
