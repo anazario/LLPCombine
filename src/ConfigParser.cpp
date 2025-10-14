@@ -103,19 +103,24 @@ public:
 	      
 	      if (line.back() == ':') {
 		// We're entering a subkey, extract the actual key name
-		current_key = line.substr(0, line.length() - 1);
-		current_key.erase(0, current_key.find_first_not_of(" \t"));
-		current_key.erase(current_key.find_last_not_of(" \t") + 1);
-		// Debug: Don't set current_key for systematics sections
-		if (current_section == "systematics") {
-		    current_key = "";
-		}
+		std::string extracted_key = line.substr(0, line.length() - 1);
+		extracted_key.erase(0, extracted_key.find_first_not_of(" \t"));
+		extracted_key.erase(extracted_key.find_last_not_of(" \t") + 1);
+		
+		// DEBUG: Print what we're setting as current_key
+		std::cout << "DEBUG: Setting current_key to '" << extracted_key << "' in section '" << current_section << "', subsection '" << current_subsection << "'" << std::endl;
+		
+		current_key = extracted_key;
 	      } else {
 		// If we're in a nested list context, append current_key only if it's meaningful
 		std::string subsection_full = current_subsection;
 		if (!current_key.empty()) {
 		  subsection_full += "." + current_key;
 		}
+		
+		// DEBUG: Print the key being built
+		std::cout << "DEBUG: Processing line '" << line << "' with key '" << current_section << "." << subsection_full << "'" << std::endl;
+		
 		parseKeyValue(line, current_section, subsection_full, current_anchor_key);
 	      }
 	    }
