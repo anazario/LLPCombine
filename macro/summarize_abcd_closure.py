@@ -607,9 +607,33 @@ def save_results_json(closure_data, signal_name, config_file, output_dir, region
     
     return filepath
 
+def detect_predicted_region_from_path(datacard_dir):
+    """Detect predicted region from datacard directory name"""
+    import os
+    dir_name = os.path.basename(datacard_dir.rstrip('/'))
+    
+    # Look for _PredictX pattern
+    if '_Predict' in dir_name:
+        # Extract the region letter after _Predict
+        predict_part = dir_name.split('_Predict')[-1]
+        if len(predict_part) >= 1 and predict_part[0] in ['A', 'B', 'C', 'D']:
+            return predict_part[0]
+    
+    # Look for other common patterns
+    if dir_name.endswith('_A') or 'PredictA' in dir_name:
+        return 'A'
+    elif dir_name.endswith('_B') or 'PredictB' in dir_name:
+        return 'B'
+    elif dir_name.endswith('_C') or 'PredictC' in dir_name:
+        return 'C'
+    elif dir_name.endswith('_D') or 'PredictD' in dir_name:
+        return 'D'
+    
+    return None
+
 def main():
     parser = argparse.ArgumentParser(description="Summarize ABCD closure test results")
-    parser.add_argument("datacard_dir", help="Directory containing fit results")
+    parser.add_argument("datacard_dirs", nargs='+', help="One or more directories containing fit results")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("-c", "--config", help="ABCD config file (optional, to display region cuts)")
     parser.add_argument("--json-output-dir", default="results/fit_json", help="Directory to save JSON results (default: results/fit_json)")
@@ -618,69 +642,96 @@ def main():
     
     args = parser.parse_args()
     
-    if not os.path.exists(args.datacard_dir):
-        print(f"Error: Directory {args.datacard_dir} does not exist")
-        return 1
-    
-    # Find fit files
-    fit_files = find_fit_files(args.datacard_dir)
-    if not fit_files:
-        print(f"Error: No fitDiagnostics*.root files found in {args.datacard_dir}")
-        return 1
-    
-    print(f"Found {len(fit_files)} fit result file(s)")
-    
-    # Process each fit file
-    for fit_file in fit_files:
-        # Extract signal name from path
-        signal_name = os.path.basename(os.path.dirname(fit_file))
-        
-        if args.verbose:
-            print(f"\nProcessing: {fit_file}")
-        
-        # Extract ABCD information
-        abcd_info = extract_abcd_info(fit_file, args.verbose)
-        if not abcd_info:
+    # Validate and collect all directories
+    valid_dirs = []
+    for datacard_dir in args.datacard_dirs:
+        if not os.path.exists(datacard_dir):
+            print(f"Warning: Directory {datacard_dir} does not exist, skipping")
             continue
         
-        # Override ABCD mapping with config file if provided
-        axis_info = {}
-        if args.config and os.path.exists(args.config):
-            config_mapping, config_predicted, axis_info = extract_abcd_mapping_from_config(args.config, args.predict)
-            if config_mapping:
-                print(f"Using ABCD mapping from config file: {args.config}")
-                if args.predict:
-                    print(f"Overriding predicted region to: {args.predict}")
+        fit_files = find_fit_files(datacard_dir)
+        if not fit_files:
+            print(f"Warning: No fitDiagnostics*.root files found in {datacard_dir}, skipping")
+            continue
+        
+        valid_dirs.append(datacard_dir)
+    
+    if not valid_dirs:
+        print("Error: No valid directories with fit results found")
+        return 1
+    
+    print(f"Processing {len(valid_dirs)} directories with fit results")
+    
+    # Process each directory
+    for datacard_dir in valid_dirs:
+        print(f"\n{'='*60}")
+        print(f"Processing directory: {datacard_dir}")
+        print(f"{'='*60}")
+        
+        # Detect predicted region from directory name
+        detected_region = detect_predicted_region_from_path(datacard_dir)
+        predict_override = args.predict if args.predict else detected_region
+        
+        if predict_override:
+            print(f"Detected/Using predicted region: {predict_override}")
+        
+        # Find fit files for this directory
+        fit_files = find_fit_files(datacard_dir)
+        print(f"Found {len(fit_files)} fit result file(s)")
+        
+            # Process each fit file in this directory
+            for fit_file in fit_files:
+                # Extract signal name from path
+                signal_name = os.path.basename(os.path.dirname(fit_file))
+                
                 if args.verbose:
-                    print(f"DEBUG: Config mapping: {config_mapping}")
-                    print(f"DEBUG: Config predicted: {config_predicted}")
-                    print(f"DEBUG: Axis info: {axis_info}")
-                abcd_info['abcd_mapping'] = config_mapping
-                abcd_info['predicted_region'] = config_predicted
-                abcd_info['axis_info'] = axis_info
-            else:
-                print(f"DEBUG: Failed to extract mapping from config file")
-        
-        # Calculate closure metrics
-        closure_data = calculate_closure_metrics(abcd_info)
-        
-        # Extract region cuts if config file provided
-        region_cuts = None
-        if args.config and os.path.exists(args.config):
-            # Use the mapping that will be used in the closure calculation
-            mapping_for_cuts = abcd_info.get('abcd_mapping')
-            if mapping_for_cuts:
-                region_cuts = extract_region_cuts(args.config, mapping_for_cuts)
-        
-        # Print summary
-        print_closure_summary(closure_data, signal_name, region_cuts)
-        
-        # Save JSON results if not disabled
-        if not args.no_json:
-            json_file = save_results_json(closure_data, signal_name, args.config, 
-                                        args.json_output_dir, region_cuts, axis_info)
-            if json_file:
-                print(f"\n💾 Results saved to: {json_file}")
+                    print(f"\n  Processing: {fit_file}")
+                
+                # Extract ABCD information
+                abcd_info = extract_abcd_info(fit_file, args.verbose)
+                if not abcd_info:
+                    continue
+                
+                # Override ABCD mapping with config file if provided
+                axis_info = {}
+                if args.config and os.path.exists(args.config):
+                    config_mapping, config_predicted, axis_info = extract_abcd_mapping_from_config(args.config, predict_override)
+                    if config_mapping:
+                        print(f"  Using ABCD mapping from config file: {args.config}")
+                        if predict_override:
+                            print(f"  Using predicted region: {predict_override}")
+                        if args.verbose:
+                            print(f"  DEBUG: Config mapping: {config_mapping}")
+                            print(f"  DEBUG: Config predicted: {config_predicted}")
+                            print(f"  DEBUG: Axis info: {axis_info}")
+                        abcd_info['abcd_mapping'] = config_mapping
+                        abcd_info['predicted_region'] = config_predicted
+                        abcd_info['axis_info'] = axis_info
+                    else:
+                        print(f"  DEBUG: Failed to extract mapping from config file")
+                
+                # Calculate closure metrics
+                closure_data = calculate_closure_metrics(abcd_info)
+                
+                # Extract region cuts if config file provided
+                region_cuts = None
+                if args.config and os.path.exists(args.config):
+                    # Use the mapping that will be used in the closure calculation
+                    mapping_for_cuts = abcd_info.get('abcd_mapping')
+                    if mapping_for_cuts:
+                        region_cuts = extract_region_cuts(args.config, mapping_for_cuts)
+                
+                # Print summary
+                print_closure_summary(closure_data, signal_name, region_cuts)
+                
+                # Save JSON results if not disabled
+                if not args.no_json:
+                    # Include directory name in JSON filename to distinguish between predictions
+                    dir_suffix = f"_{os.path.basename(datacard_dir)}" if len(valid_dirs) > 1 else ""
+                    json_file = save_results_json(closure_data, signal_name + dir_suffix, args.config, 
+                                                args.json_output_dir, region_cuts, axis_info)
+                    if json_file:
+                        print(f"\n💾 Results saved to: {json_file}")
     
     return 0
 
