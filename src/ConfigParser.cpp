@@ -98,16 +98,20 @@ public:
                     parseKeyValue(line, current_section, "", current_anchor_key);
                 }
             } else {
-	      // Third level or list items (like cuts: - "...")
+	      // Third level or list items (like cuts: - "..." or systematics list items)
 	      static std::string current_key = "";
 	      
 	      if (line.back() == ':') {
-		// We're entering a subkey, e.g. "cuts:"
+		// We're entering a subkey, extract the actual key name
 		current_key = line.substr(0, line.length() - 1);
 		current_key.erase(0, current_key.find_first_not_of(" \t"));
 		current_key.erase(current_key.find_last_not_of(" \t") + 1);
+		// Debug: Don't set current_key for systematics sections
+		if (current_section == "systematics") {
+		    current_key = "";
+		}
 	      } else {
-		// If we're in a nested list context, append current_key
+		// If we're in a nested list context, append current_key only if it's meaningful
 		std::string subsection_full = current_subsection;
 		if (!current_key.empty()) {
 		  subsection_full += "." + current_key;
