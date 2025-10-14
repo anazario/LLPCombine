@@ -474,8 +474,10 @@ def extract_abcd_mapping_from_config(config_file, predict_override=None):
     """Extract ABCD region mapping and axis info from config file"""
     try:
         import yaml
+        print(f"  DEBUG: Attempting to parse config file: {config_file}")
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
+        print(f"  DEBUG: Successfully loaded YAML config")
         
         # Handle both old and new format
         axis_info = {}
@@ -539,8 +541,10 @@ def extract_region_cuts(config_file, abcd_mapping):
     """Extract region cuts from ABCD config file"""
     try:
         import yaml
+        print(f"  DEBUG: Extracting cuts from config file: {config_file}")
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
+        print(f"  DEBUG: Successfully loaded YAML for cuts extraction")
         
         region_cuts = {}
         
