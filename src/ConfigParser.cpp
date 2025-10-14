@@ -347,8 +347,8 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             config_.abcd.y_axis.high_cuts = parser.lists["y_axis.y_high.cuts"];
             
             // Parse common cuts
-            if (parser.lists.count("abcd.common_cuts")) {
-                config_.abcd.common_cuts = parser.lists["abcd.common_cuts"];
+            if (parser.lists.count("abcd_common_cuts")) {
+                config_.abcd.common_cuts = parser.lists["abcd_common_cuts"];
             }
             
             // Generate ABCD bins dynamically from axis definitions
