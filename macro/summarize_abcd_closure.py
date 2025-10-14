@@ -476,7 +476,12 @@ def extract_abcd_mapping_from_config(config_file, predict_override=None):
         import yaml
         print(f"  DEBUG: Attempting to parse config file: {config_file}")
         with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
+            try:
+                config = yaml.safe_load(f)
+            except yaml.YAMLError as ye:
+                print(f"  DEBUG: safe_load failed, trying load: {ye}")
+                f.seek(0)
+                config = yaml.load(f, Loader=yaml.FullLoader)
         print(f"  DEBUG: Successfully loaded YAML config")
         
         # Handle both old and new format
@@ -543,7 +548,12 @@ def extract_region_cuts(config_file, abcd_mapping):
         import yaml
         print(f"  DEBUG: Extracting cuts from config file: {config_file}")
         with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
+            try:
+                config = yaml.safe_load(f)
+            except yaml.YAMLError as ye:
+                print(f"  DEBUG: safe_load failed, trying load: {ye}")
+                f.seek(0)
+                config = yaml.load(f, Loader=yaml.FullLoader)
         print(f"  DEBUG: Successfully loaded YAML for cuts extraction")
         
         region_cuts = {}
