@@ -19,7 +19,7 @@ from string import Template
 def create_abcd_systematics_auto(syst_prefix, precision_value):
     """Create ABCD systematics using auto placeholders (works for any predicted region)"""
     
-    systematics_yaml = f"""  abcd_systematics:
+    systematics_yaml = f"""abcd_systematics:
     # Rate parameters for control regions (auto-mapped at runtime)
     - name: "scale_{syst_prefix}_control1"
       type: "rateParam"
@@ -46,7 +46,7 @@ def create_abcd_systematics_auto(syst_prefix, precision_value):
       bins: ["auto_predicted"]
       processes: ["backgrounds"]
 
-  precision_systematics:
+precision_systematics:
     # Precision systematics for control regions only
     - name: "{syst_prefix}_precision_control1"
       type: "lnN"
