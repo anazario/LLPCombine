@@ -224,7 +224,12 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	}
 	
 	// Write output JSON
-	std::string output_path = output_dir + config.output_json;
+	std::string output_path = output_dir;
+	if (output_path.back() != '/') {
+		output_path += "/";
+	}
+	output_path += config.output_json;
+	
 	auto json = std::make_unique<JSONFactory>(BFI->analysisbins);
 	json->WriteJSON(output_path);
 	
