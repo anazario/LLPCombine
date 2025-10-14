@@ -116,9 +116,6 @@ public:
 		extracted_key.erase(0, extracted_key.find_first_not_of(" \t"));
 		extracted_key.erase(extracted_key.find_last_not_of(" \t") + 1);
 		
-		// DEBUG: Print what we're setting as current_key
-		std::cout << "DEBUG: Setting current_key to '" << extracted_key << "' in section '" << current_section << "', subsection '" << current_subsection << "'" << std::endl;
-		
 		current_key = extracted_key;
 	      } else {
 		// If we're in a nested list context, append current_key only if it's meaningful
@@ -126,9 +123,6 @@ public:
 		if (!current_key.empty()) {
 		  subsection_full += "." + current_key;
 		}
-		
-		// DEBUG: Print the key being built
-		std::cout << "DEBUG: Processing line '" << line << "' with key '" << current_section << "." << subsection_full << "'" << std::endl;
 		
 		parseKeyValue(line, current_section, subsection_full, current_anchor_key);
 	      }
@@ -613,20 +607,6 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
 }
 
 void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
-    // Debug: Print what we actually have
-    std::cout << "=== YAML Parser Contents ===" << std::endl;
-    for (const auto& pair : parser.values) {
-        if (pair.first.find("systematics") != std::string::npos) {
-            std::cout << "VALUE: " << pair.first << " = " << pair.second << std::endl;
-        }
-    }
-    for (const auto& pair : parser.lists) {
-        if (pair.first.find("systematics") != std::string::npos) {
-            std::cout << "LIST: " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
-        }
-    }
-    std::cout << "=============================" << std::endl;
-    
     // Parse ABCD systematics
     ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
     
