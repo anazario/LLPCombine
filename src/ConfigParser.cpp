@@ -100,6 +100,15 @@ public:
             } else {
 	      // Third level or list items (like cuts: - "..." or systematics list items)
 	      static std::string current_key = "";
+	      static std::string last_section = "";
+	      static std::string last_subsection = "";
+	      
+	      // Reset current_key when we change sections or subsections
+	      if (current_section != last_section || current_subsection != last_subsection) {
+	          current_key = "";
+	          last_section = current_section;
+	          last_subsection = current_subsection;
+	      }
 	      
 	      if (line.back() == ':') {
 		// We're entering a subkey, extract the actual key name
