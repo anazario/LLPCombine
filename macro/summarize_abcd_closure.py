@@ -475,6 +475,16 @@ def extract_abcd_mapping_from_config(config_file, predict_override=None):
     """Extract ABCD region mapping and axis info from config file"""
     try:
         import yaml
+        import os
+        print(f"  DEBUG: PyYAML version: {yaml.__version__}")
+        print(f"  DEBUG: Config file path: {config_file}")
+        print(f"  DEBUG: File exists: {os.path.exists(config_file)}")
+        
+        with open(config_file, 'r') as f:
+            content = f.read()
+            print(f"  DEBUG: File content length: {len(content)}")
+            print(f"  DEBUG: First 100 chars: {repr(content[:100])}")
+            
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
         
