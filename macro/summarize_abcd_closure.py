@@ -153,7 +153,6 @@ def extract_abcd_info(fit_file, verbose=False):
     
     # If no workspace or no data found, try to extract from datacard
     if not data_yields:
-        print("INFO: Attempting to extract observed data from datacard...")
         # Try common datacard names
         fit_dir = os.path.dirname(fit_file)
         
@@ -173,9 +172,7 @@ def extract_abcd_info(fit_file, verbose=False):
             
         if datacard_path and os.path.exists(datacard_path):
             data_yields = extract_observations_from_datacard(datacard_path)
-            if data_yields:
-                print(f"SUCCESS: Extracted observed data from {datacard_path}")
-            else:
+            if not data_yields:
                 print("ERROR: Could not extract observations from datacard")
         else:
             print(f"ERROR: No datacard found in {fit_dir}")
@@ -475,16 +472,6 @@ def extract_abcd_mapping_from_config(config_file, predict_override=None):
     """Extract ABCD region mapping and axis info from config file"""
     try:
         import yaml
-        import os
-        print(f"  DEBUG: PyYAML version: {yaml.__version__}")
-        print(f"  DEBUG: Config file path: {config_file}")
-        print(f"  DEBUG: File exists: {os.path.exists(config_file)}")
-        
-        with open(config_file, 'r') as f:
-            content = f.read()
-            print(f"  DEBUG: File content length: {len(content)}")
-            print(f"  DEBUG: First 100 chars: {repr(content[:100])}")
-            
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
         
