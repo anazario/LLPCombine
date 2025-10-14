@@ -741,6 +741,12 @@ def main():
                 mapping_for_cuts = abcd_info.get('abcd_mapping')
                 if mapping_for_cuts:
                     region_cuts = extract_region_cuts(args.config, mapping_for_cuts)
+                    if args.verbose:
+                        print(f"  DEBUG: Extracted {len(region_cuts)} region cuts")
+                        for region, cuts in region_cuts.items():
+                            print(f"    {region}: {len(cuts)} cuts")
+                else:
+                    print(f"  DEBUG: No ABCD mapping available for cuts extraction")
             
             # Print summary
             print_closure_summary(closure_data, signal_name, region_cuts)
@@ -749,6 +755,12 @@ def main():
             if not args.no_json:
                 # Include directory name in JSON filename to distinguish between predictions
                 dir_suffix = f"_{os.path.basename(datacard_dir)}" if len(valid_dirs) > 1 else ""
+                
+                if args.verbose:
+                    print(f"  DEBUG: Saving JSON with:")
+                    print(f"    axis_info keys: {list(axis_info.keys()) if axis_info else 'None'}")
+                    print(f"    region_cuts keys: {list(region_cuts.keys()) if region_cuts else 'None'}")
+                
                 json_file = save_results_json(closure_data, signal_name + dir_suffix, args.config, 
                                             args.json_output_dir, region_cuts, axis_info)
                 if json_file:
