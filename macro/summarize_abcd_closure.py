@@ -543,7 +543,28 @@ def extract_region_cuts(config_file, abcd_mapping):
             config = yaml.safe_load(f)
         
         region_cuts = {}
-        if 'bins' in config:
+        
+        # Handle new explicit format (with x_axis/y_axis)
+        if 'x_axis' in config and 'y_axis' in config:
+            # Extract cuts for each ABCD region based on the 2x2 grid
+            # A = x_low + y_high, B = x_high + y_high, C = x_low + y_low, D = x_high + y_low
+            
+            x_low_cuts = config['x_axis'].get('x_low', {}).get('cuts', [])
+            x_high_cuts = config['x_axis'].get('x_high', {}).get('cuts', [])
+            y_low_cuts = config['y_axis'].get('y_low', {}).get('cuts', [])
+            y_high_cuts = config['y_axis'].get('y_high', {}).get('cuts', [])
+            common_cuts = config.get('abcd_common_cuts', [])
+            
+            # Build cuts for each region
+            region_cuts = {
+                'A': common_cuts + x_low_cuts + y_high_cuts,   # x_low + y_high
+                'B': common_cuts + x_high_cuts + y_high_cuts,  # x_high + y_high  
+                'C': common_cuts + x_low_cuts + y_low_cuts,    # x_low + y_low
+                'D': common_cuts + x_high_cuts + y_low_cuts    # x_high + y_low
+            }
+            
+        # Handle old format (with bins section)
+        elif 'bins' in config:
             for region_letter, bin_name in abcd_mapping.items():
                 if bin_name in config['bins'] and 'cuts' in config['bins'][bin_name]:
                     cuts = config['bins'][bin_name]['cuts']
