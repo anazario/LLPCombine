@@ -21,14 +21,17 @@ void PrintHelp(const std::string& program_name) {
     std::cout << "  -v, --verbose           Enable verbose output\n";
     std::cout << "  -r, --run-combine       Run macro/launchCombine.sh after generating datacards\n";
     std::cout << "  -p, --predict REGION    Predict specific ABCD region (A, B, C, or D)\n";
-    std::cout << "                          Only valid for ABCD method, overrides config setting\n\n";
+    std::cout << "                          Only valid for ABCD method, overrides config setting\n";
+    std::cout << "  --predict-all           Generate datacards for all 4 ABCD regions (A, B, C, D)\n";
+    std::cout << "                          Creates separate output directories with PredictX suffix\n\n";
     std::cout << "Examples:\n";
     std::cout << "  " << program_name << " analysis_results.json\n";
     std::cout << "  " << program_name << " --output-dir my_datacards results.json\n";
     std::cout << "  " << program_name << " -o datacards_run2 -v ./json/comprehensive_v36.json\n";
     std::cout << "  " << program_name << " -r -v results.json config/abcd_example.yaml  # ABCD analysis\n";
     std::cout << "  " << program_name << " --predict A results.json config/abcd.yaml    # Predict region A\n";
-    std::cout << "  " << program_name << " -p B -o datacards_B results.json config/abcd.yaml  # Predict region B\n\n";
+    std::cout << "  " << program_name << " -p B -o datacards_B results.json config/abcd.yaml  # Predict region B\n";
+    std::cout << "  " << program_name << " --predict-all results.json config/abcd.yaml       # Generate all 4 regions\n\n";
 }
 
 // Function to detect ABCD method from JSON metadata
@@ -66,6 +69,7 @@ int main(int argc, char* argv[]) {
     std::string config_file = "";
     std::string datacard_dir = "datacards";
     std::string predict_region = "";  // New option for ABCD prediction
+    bool predict_all = false;         // New option to generate all 4 regions
     bool verbose = false;
     bool help = false;
     bool run_combine = false;
@@ -100,6 +104,8 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Error: " << arg << " requires an argument (A, B, C, or D)" << std::endl;
                 return 1;
             }
+        } else if (arg == "--predict-all") {
+            predict_all = true;
         } else if (arg.front() == '-') {
             std::cerr << "Error: Unknown option: " << arg << std::endl;
             PrintHelp(argv[0]);
@@ -161,16 +167,17 @@ int main(int argc, char* argv[]) {
     
     // Handle ABCD prediction defaults and validation
     if (is_abcd) {
-        if (predict_region.empty()) {
+        // Validate that only one prediction option is used
+        if (!predict_region.empty() && predict_all) {
+            std::cerr << "Error: Cannot use both --predict and --predict-all options" << std::endl;
+            return 1;
+        }
+        
+        if (predict_region.empty() && !predict_all) {
             predict_region = "A";  // Default to predicting region A
         }
-        if (!predict_region.empty() && configParser) {
-            // Override the predicted region in the config
-            // Note: We'll need to modify the BuildFit method to accept the override
-            analysis_config.abcd.predicted_region = "region_" + predict_region;
-        }
-    } else if (!predict_region.empty()) {
-        std::cerr << "Error: --predict option is only valid for ABCD method configurations" << std::endl;
+    } else if (!predict_region.empty() || predict_all) {
+        std::cerr << "Error: --predict and --predict-all options are only valid for ABCD method configurations" << std::endl;
         return 1;
     }
 
@@ -180,7 +187,11 @@ int main(int argc, char* argv[]) {
         std::cout << "Config file: " << (config_file.empty() ? "not provided" : config_file) << std::endl;
         std::cout << "Analysis method: " << (is_abcd ? "ABCD" : "Standard") << std::endl;
         if (is_abcd) {
-            std::cout << "Predicted region: " << predict_region << std::endl;
+            if (predict_all) {
+                std::cout << "Predicted region: ALL (A, B, C, D)" << std::endl;
+            } else {
+                std::cout << "Predicted region: " << predict_region << std::endl;
+            }
         }
         std::cout << "Output directory: " << datacard_dir << std::endl;
         std::cout << "Run Combine: " << (run_combine ? "yes" : "no") << std::endl;
@@ -233,18 +244,45 @@ int main(int argc, char* argv[]) {
 			std::cout << "Processing signal " << (i+1) << "/" << signals.size() << ": " << signals[i] << std::endl;
 		}
 		
-		BuildFit* BF = new BuildFit();
-		std::filesystem::create_directories(datacard_dir + "/" + signals[i]);
-		
-		if (is_abcd) {
-			// Use ABCD method
-			BF->BuildABCDFit(j, signals[i], datacard_dir, analysis_config);
+		if (is_abcd && predict_all) {
+			// Generate datacards for all 4 ABCD regions
+			std::vector<std::string> regions = {"A", "B", "C", "D"};
+			
+			for (const auto& region : regions) {
+				if (verbose) {
+					std::cout << "  Generating datacard for region " << region << std::endl;
+				}
+				
+				// Create config copy with this predicted region
+				AnalysisConfig region_config = analysis_config;
+				region_config.abcd.predicted_region = "region_" + region;
+				
+				// Create output directory with PredictX suffix
+				std::string region_output_dir = datacard_dir + "_Predict" + region;
+				BuildFit* BF = new BuildFit();
+				std::filesystem::create_directories(region_output_dir + "/" + signals[i]);
+				
+				BF->BuildABCDFit(j, signals[i], region_output_dir, region_config);
+				delete BF;
+			}
 		} else {
-			// Use standard method
-			BF->BuildAsimovFit(j, signals[i], datacard_dir);
+			// Single prediction (standard behavior)
+			BuildFit* BF = new BuildFit();
+			std::filesystem::create_directories(datacard_dir + "/" + signals[i]);
+			
+			if (is_abcd) {
+				// Set the predicted region if not already set
+				if (configParser && !predict_region.empty()) {
+					analysis_config.abcd.predicted_region = "region_" + predict_region;
+				}
+				BF->BuildABCDFit(j, signals[i], datacard_dir, analysis_config);
+			} else {
+				// Use standard method
+				BF->BuildAsimovFit(j, signals[i], datacard_dir);
+			}
+			
+			delete BF;
 		}
-		
-		delete BF;
 	}
 	
 	if (verbose) {
