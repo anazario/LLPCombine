@@ -938,9 +938,8 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
     
     config_.bins.push_back(bin_d);
     
-    // Always show debug output for now to see what's happening
+    // Show generated ABCD regions
     std::cout << "\n=== Generated ABCD Regions ===" << std::endl;
-    std::cout << "\n=== DEBUG: Generated ABCD Regions ===" << std::endl;
     std::cout << "X-axis: " << config_.abcd.x_axis.name << std::endl;
     std::cout << "Y-axis: " << config_.abcd.y_axis.name << std::endl;
     std::cout << "------------------------------------" << std::endl;
@@ -963,34 +962,9 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
         std::cout << "   - " << cut << std::endl;
       }
 
-      // Optional: combined expression to verify parentheses and logic
       std::cout << "   Combined: " << GetCombinedCuts(bin.name) << std::endl;
       std::cout << "------------------------------------" << std::endl;
     }
 
     std::cout << "====================================" << std::endl;
-
-    std::cout << "X-axis: " << config_.abcd.x_axis.name << std::endl;
-    std::cout << "Y-axis: " << config_.abcd.y_axis.name << std::endl;
-    std::cout << "X-low cuts: " << config_.abcd.x_axis.low_cuts.size() << std::endl;
-    std::cout << "X-high cuts: " << config_.abcd.x_axis.high_cuts.size() << std::endl;
-    std::cout << "Y-low cuts: " << config_.abcd.y_axis.low_cuts.size() << std::endl;
-    std::cout << "Y-high cuts: " << config_.abcd.y_axis.high_cuts.size() << std::endl;
-    std::cout << "Common cuts: " << config_.abcd.common_cuts.size() << " cuts" << std::endl;
-    for (const auto& bin : config_.bins) {
-      if (bin.name.find("_A") != std::string::npos || bin.name.find("_B") != std::string::npos || 
-	  bin.name.find("_C") != std::string::npos || bin.name.find("_D") != std::string::npos) {
-	std::cout << "  " << bin.name << ": " << bin.description << std::endl;
-	std::cout << "    Cuts (" << bin.cuts.size() << "): ";
-	for (const auto& cut : bin.cuts) {
-	  std::cout << "\"" << cut << "\" ";
-	}
-	std::cout << std::endl;
-      }
-    }
-    std::cout << "Regions mapping:" << std::endl;
-    for (const auto& region : config_.abcd.regions) {
-      std::cout << "  " << region.first << " -> " << region.second << std::endl;
-    }
-    std::cout << "=========================" << std::endl;
 }
