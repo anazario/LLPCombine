@@ -470,14 +470,48 @@ def print_closure_summary(closure_data, signal_name, region_cuts=None):
     else:
         print(f"   ❌ Significant bias: >20% deviation from expectation")
 
-def extract_abcd_mapping_from_config(config_file):
-    """Extract ABCD region mapping from config file"""
+def extract_abcd_mapping_from_config(config_file, predict_override=None):
+    """Extract ABCD region mapping and axis info from config file"""
     try:
         import yaml
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
         
-        if 'abcd' in config and 'regions' in config['abcd']:
+        # Handle both old and new format
+        axis_info = {}
+        
+        # New explicit format (with x_axis/y_axis)
+        if 'x_axis' in config and 'y_axis' in config:
+            axis_info = {
+                'x_axis': {
+                    'name': config['x_axis']['name'],
+                    'low_desc': config['x_axis'].get('x_low', {}).get('description', ''),
+                    'high_desc': config['x_axis'].get('x_high', {}).get('description', '')
+                },
+                'y_axis': {
+                    'name': config['y_axis']['name'],
+                    'low_desc': config['y_axis'].get('y_low', {}).get('description', ''),
+                    'high_desc': config['y_axis'].get('y_high', {}).get('description', '')
+                }
+            }
+            
+            # For explicit format, we need to look for the generated ABCD bins
+            # They should follow the pattern: {x_axis_name}_{y_axis_name}_{A|B|C|D}
+            x_name = config['x_axis']['name']
+            y_name = config['y_axis']['name']
+            
+            mapping = {
+                'A': f"{x_name}_{y_name}_A",
+                'B': f"{x_name}_{y_name}_B", 
+                'C': f"{x_name}_{y_name}_C",
+                'D': f"{x_name}_{y_name}_D"
+            }
+            
+            # Use override if provided, otherwise default to A for explicit format
+            predicted_letter = predict_override if predict_override else 'A'
+            
+        # Old format (with abcd.regions)
+        elif 'abcd' in config and 'regions' in config['abcd']:
             regions = config['abcd']['regions']
             # Convert region_A -> A, etc.
             mapping = {}
@@ -489,12 +523,17 @@ def extract_abcd_mapping_from_config(config_file):
             predicted_region = config['abcd'].get('predicted_region', 'region_A')
             predicted_letter = predicted_region.split('_')[1] if predicted_region.startswith('region_') else 'A'
             
-            return mapping, predicted_letter
+            # Use override if provided
+            if predict_override:
+                predicted_letter = predict_override
+        else:
+            return None, None, None
         
-        return None, None
+        return mapping, predicted_letter, axis_info
+        
     except Exception as e:
         print(f"Warning: Could not extract ABCD mapping from config file: {e}")
-        return None, None
+        return None, None, None
 
 def extract_region_cuts(config_file, abcd_mapping):
     """Extract region cuts from ABCD config file"""
@@ -522,7 +561,7 @@ def extract_region_cuts(config_file, abcd_mapping):
         print(f"Warning: Could not extract cuts from config file: {e}")
         return {}
 
-def save_results_json(closure_data, signal_name, config_file, output_dir, region_cuts=None):
+def save_results_json(closure_data, signal_name, config_file, output_dir, region_cuts=None, axis_info=None):
     """Save closure test results to JSON file"""
     if not closure_data:
         return None
@@ -558,6 +597,10 @@ def save_results_json(closure_data, signal_name, config_file, output_dir, region
     if region_cuts:
         results["region_cuts"] = region_cuts
     
+    # Add axis information if available (for new explicit format)
+    if axis_info:
+        results["axis_info"] = axis_info
+    
     # Save to JSON
     with open(filepath, 'w') as f:
         json.dump(results, f, indent=2)
@@ -571,6 +614,7 @@ def main():
     parser.add_argument("-c", "--config", help="ABCD config file (optional, to display region cuts)")
     parser.add_argument("--json-output-dir", default="results/fit_json", help="Directory to save JSON results (default: results/fit_json)")
     parser.add_argument("--no-json", action="store_true", help="Skip JSON output generation")
+    parser.add_argument("-p", "--predict", choices=["A", "B", "C", "D"], help="Override predicted region (A, B, C, or D)")
     
     args = parser.parse_args()
     
@@ -600,20 +644,20 @@ def main():
             continue
         
         # Override ABCD mapping with config file if provided
+        axis_info = {}
         if args.config and os.path.exists(args.config):
-            config_mapping, config_predicted = extract_abcd_mapping_from_config(args.config)
+            config_mapping, config_predicted, axis_info = extract_abcd_mapping_from_config(args.config, args.predict)
             if config_mapping:
                 print(f"Using ABCD mapping from config file: {args.config}")
-                print(f"DEBUG: Config mapping: {config_mapping}")
-                print(f"DEBUG: Config predicted: {config_predicted}")
-                print(f"DEBUG: abcd_info keys: {abcd_info.keys()}")
-                if 'abcd_mapping' in abcd_info:
-                    print(f"DEBUG: Old mapping: {abcd_info['abcd_mapping']}")
-                else:
-                    print(f"DEBUG: No 'abcd_mapping' key found, creating new one")
+                if args.predict:
+                    print(f"Overriding predicted region to: {args.predict}")
+                if args.verbose:
+                    print(f"DEBUG: Config mapping: {config_mapping}")
+                    print(f"DEBUG: Config predicted: {config_predicted}")
+                    print(f"DEBUG: Axis info: {axis_info}")
                 abcd_info['abcd_mapping'] = config_mapping
                 abcd_info['predicted_region'] = config_predicted
-                print(f"DEBUG: New mapping: {abcd_info['abcd_mapping']}")
+                abcd_info['axis_info'] = axis_info
             else:
                 print(f"DEBUG: Failed to extract mapping from config file")
         
@@ -634,7 +678,7 @@ def main():
         # Save JSON results if not disabled
         if not args.no_json:
             json_file = save_results_json(closure_data, signal_name, args.config, 
-                                        args.json_output_dir, region_cuts)
+                                        args.json_output_dir, region_cuts, axis_info)
             if json_file:
                 print(f"\n💾 Results saved to: {json_file}")
     

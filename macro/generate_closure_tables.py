@@ -21,11 +21,18 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 
 
-def extract_variables_from_cuts(region_cuts):
-    """Extract X and Y variables from region cuts"""
+def extract_variables_from_cuts(region_cuts, axis_info=None):
+    """Extract X and Y variables from region cuts or axis info"""
     if not region_cuts:
         return "Unknown", "Unknown"
     
+    # Use axis_info if available (new explicit format)
+    if axis_info and 'x_axis' in axis_info and 'y_axis' in axis_info:
+        x_var = format_variable_name(axis_info['x_axis']['name'])
+        y_var = format_variable_name(axis_info['y_axis']['name'])
+        return x_var, y_var
+    
+    # Fallback to old method (guessing from cuts)
     x_var, y_var = "Unknown", "Unknown"
     
     # Look through all regions to find variable patterns
@@ -371,7 +378,7 @@ like 1A, 1B, 1C, 1D for configuration 1.}
     with open(output_file, 'w') as f:
         f.write(latex_content)
 
-def extract_variable_ranges_from_cuts(region_cuts):
+def extract_variable_ranges_from_cuts(region_cuts, axis_info=None):
     """Extract the x and y variable ranges from ABCD cuts"""
     if not region_cuts:
         return "Unknown", "Unknown", [], [], []
@@ -574,6 +581,22 @@ def extract_variable_ranges_from_cuts(region_cuts):
                 x_var = "Unknown"
                 x_vals = []
     
+    # Use axis_info if available for variable names (new explicit format)
+    if axis_info and 'x_axis' in axis_info and 'y_axis' in axis_info:
+        x_var_name = format_variable_name(axis_info['x_axis']['name'])
+        y_var_name = format_variable_name(axis_info['y_axis']['name'])
+        
+        # For explicit format, create descriptive ranges from axis info
+        x_vals = [axis_info['x_axis'].get('low_desc', 'low'), axis_info['x_axis'].get('high_desc', 'high')]
+        y_vals = [axis_info['y_axis'].get('low_desc', 'low'), axis_info['y_axis'].get('high_desc', 'high')]
+        
+        # Filter out empty descriptions
+        x_vals = [x for x in x_vals if x and x != '']
+        y_vals = [y for y in y_vals if y and y != '']
+        
+        return common_cuts_str, f"{y_var_name} vs {x_var_name}", x_vals, y_vals, common_parts
+    
+    # Fallback to old hardcoded logic
     y_var = "$R_S$" 
     y_vals = sorted(list(y_ranges))
     
@@ -621,7 +644,11 @@ Config & Common Cuts & Variables & $x_{\mathrm{low}}$ & $x_{\mathrm{high}}$ & $y
         region_cuts = first_result.get('region_cuts', {})
         
         if region_cuts:
-            common_cuts, variables, x_vals, y_vals, common_parts = extract_variable_ranges_from_cuts(region_cuts)
+            # Get axis info if available
+            first_result = group_data['results'][0]['result']
+            axis_info = first_result.get('axis_info', {})
+            
+            common_cuts, variables, x_vals, y_vals, common_parts = extract_variable_ranges_from_cuts(region_cuts, axis_info)
             
             # Format x values (categorical or numeric)
             x_low = x_vals[0] if len(x_vals) >= 1 else "?"
