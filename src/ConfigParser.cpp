@@ -483,10 +483,29 @@ void ConfigParser::PrintConfig() const {
         std::cout << std::endl;
     }
     
-    std::cout << "\nAnalysis Bins:" << std::endl;
+    // Check if there are any non-ABCD bins to display
+    bool has_non_abcd_bins = false;
     for (const auto& bin : config_.bins) {
-        std::cout << "  " << bin.name << ": " << bin.description << std::endl;
-        std::cout << "    Cuts: " << GetCombinedCuts(bin.name) << std::endl;
+        if (!(config_.method == "ABCD" && config_.abcd.use_explicit_format && 
+            (bin.name.find("_A") != std::string::npos || bin.name.find("_B") != std::string::npos || 
+             bin.name.find("_C") != std::string::npos || bin.name.find("_D") != std::string::npos))) {
+            has_non_abcd_bins = true;
+            break;
+        }
+    }
+    
+    if (has_non_abcd_bins) {
+        std::cout << "\nAnalysis Bins:" << std::endl;
+        for (const auto& bin : config_.bins) {
+            // Skip ABCD bins in explicit format since they're already shown in "Generated ABCD Regions"
+            if (config_.method == "ABCD" && config_.abcd.use_explicit_format && 
+                (bin.name.find("_A") != std::string::npos || bin.name.find("_B") != std::string::npos || 
+                 bin.name.find("_C") != std::string::npos || bin.name.find("_D") != std::string::npos)) {
+                continue;
+            }
+            std::cout << "  " << bin.name << ": " << bin.description << std::endl;
+            std::cout << "    Cuts: " << GetCombinedCuts(bin.name) << std::endl;
+        }
     }
     
     std::cout << "\nOptions:" << std::endl;
@@ -576,19 +595,6 @@ std::vector<std::string> SystematicConfig::ResolveBins(const ABCDConfig& abcd) c
 }
 
 void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
-    
-    // Debug: Print all systematics-related keys
-    for (const auto& pair : parser.values) {
-        if (pair.first.find("systematics") != std::string::npos) {
-            std::cout << "  VALUE: " << pair.first << " = " << pair.second << std::endl;
-        }
-    }
-    for (const auto& pair : parser.lists) {
-        if (pair.first.find("systematics") != std::string::npos) {
-            std::cout << "  LIST: " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
-        }
-    }
-    
     // Parse ABCD systematics
     ParseSystematicCategory(parser, "systematics.abcd_systematics", config_.abcd_systematics);
     
@@ -600,12 +606,6 @@ void ConfigParser::ParseSystematics(const SimpleYAMLParser& parser) {
 }
 
 void ConfigParser::ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics) {
-    
-    // Debug: print what lists are available
-    for (const auto& pair : parser.lists) {
-        std::cout << "  " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
-    }
-    
     // Get the list of systematic names
     if (parser.lists.count(category_prefix) == 0) {
         return; // No systematics for this category
@@ -873,7 +873,9 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
     // Generate Region A: [x_low, y_high]
     BinConfig bin_a;
     bin_a.name = bin_prefix + "A";
-    bin_a.description = config_.abcd.x_axis.low_desc + ", " + config_.abcd.y_axis.high_desc;
+    std::string low_desc = config_.abcd.x_axis.low_desc.empty() ? config_.abcd.x_axis.name + "_low" : config_.abcd.x_axis.low_desc;
+    std::string high_desc = config_.abcd.y_axis.high_desc.empty() ? config_.abcd.y_axis.name + "_high" : config_.abcd.y_axis.high_desc;
+    bin_a.description = low_desc + ", " + high_desc;
     
     // Add common cuts
     bin_a.cuts.insert(bin_a.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
@@ -890,7 +892,9 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
     // Generate Region B: [x_high, y_high]
     BinConfig bin_b;
     bin_b.name = bin_prefix + "B";
-    bin_b.description = config_.abcd.x_axis.high_desc + ", " + config_.abcd.y_axis.high_desc;
+    std::string x_high_desc = config_.abcd.x_axis.high_desc.empty() ? config_.abcd.x_axis.name + "_high" : config_.abcd.x_axis.high_desc;
+    std::string y_high_desc = config_.abcd.y_axis.high_desc.empty() ? config_.abcd.y_axis.name + "_high" : config_.abcd.y_axis.high_desc;
+    bin_b.description = x_high_desc + ", " + y_high_desc;
     
     // Add common cuts
     bin_b.cuts.insert(bin_b.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
@@ -907,7 +911,9 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
     // Generate Region C: [x_low, y_low]
     BinConfig bin_c;
     bin_c.name = bin_prefix + "C";
-    bin_c.description = config_.abcd.x_axis.low_desc + ", " + config_.abcd.y_axis.low_desc;
+    std::string x_low_desc = config_.abcd.x_axis.low_desc.empty() ? config_.abcd.x_axis.name + "_low" : config_.abcd.x_axis.low_desc;
+    std::string y_low_desc = config_.abcd.y_axis.low_desc.empty() ? config_.abcd.y_axis.name + "_low" : config_.abcd.y_axis.low_desc;
+    bin_c.description = x_low_desc + ", " + y_low_desc;
     
     // Add common cuts
     bin_c.cuts.insert(bin_c.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
@@ -924,7 +930,9 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
     // Generate Region D: [x_high, y_low]
     BinConfig bin_d;
     bin_d.name = bin_prefix + "D";
-    bin_d.description = config_.abcd.x_axis.high_desc + ", " + config_.abcd.y_axis.low_desc;
+    std::string x_high_desc_d = config_.abcd.x_axis.high_desc.empty() ? config_.abcd.x_axis.name + "_high" : config_.abcd.x_axis.high_desc;
+    std::string y_low_desc_d = config_.abcd.y_axis.low_desc.empty() ? config_.abcd.y_axis.name + "_low" : config_.abcd.y_axis.low_desc;
+    bin_d.description = x_high_desc_d + ", " + y_low_desc_d;
     
     // Add common cuts
     bin_d.cuts.insert(bin_d.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
