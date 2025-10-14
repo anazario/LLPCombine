@@ -206,10 +206,16 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     });
     
     // Apply systematics from configuration with auto-resolution
+    std::cout << "\n=== Applying Systematics ===" << std::endl;
+    std::cout << "Experimental systematics: " << config.experimental_systematics.size() << std::endl;
+    std::cout << "ABCD systematics: " << config.abcd_systematics.size() << std::endl;
+    std::cout << "Precision systematics: " << config.precision_systematics.size() << std::endl;
     
     ApplySystematics(config.experimental_systematics, config.abcd);
     ApplySystematics(config.abcd_systematics, config.abcd);  
     ApplySystematics(config.precision_systematics, config.abcd);
+    
+    std::cout << "=== Systematics Applied ===" << std::endl;
     
     cb.PrintAll();
     cb.WriteDatacard(datacard_dir + "/" + signalPoint + "/" + signalPoint + ".txt");
@@ -219,11 +225,23 @@ void BuildFit::ApplySystematics(const std::vector<SystematicConfig>& systematics
     std::string predicted_bin = abcd.GetPredictedBin();
     std::vector<std::string> control_bins = abcd.GetControlBins();
     
+    std::cout << "Processing " << systematics.size() << " systematics..." << std::endl;
+    std::cout << "Predicted bin: " << predicted_bin << std::endl;
+    
     for (const auto& syst : systematics) {
+        std::cout << "  Systematic: " << syst.name << " (type: " << syst.type << ", value: " << syst.value << ")" << std::endl;
+        
         // Resolve auto mappings
         std::vector<std::string> resolved_bins = syst.ResolveBins(abcd);
         
+        std::cout << "    Resolved to " << resolved_bins.size() << " bins: ";
+        for (const auto& bin : resolved_bins) {
+            std::cout << bin << " ";
+        }
+        std::cout << std::endl;
+        
         if (resolved_bins.empty()) {
+            std::cout << "    Skipping - no resolved bins" << std::endl;
             continue;
         }
         
