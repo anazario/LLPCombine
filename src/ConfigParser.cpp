@@ -335,8 +335,8 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             config_.abcd.y_axis.high_cuts = parser.lists["y_axis.y_high.cuts"];
             
             // Parse common cuts
-            if (parser.lists.count("abcd.common_cuts")) {
-                config_.abcd.common_cuts = parser.lists["abcd.common_cuts"];
+            if (parser.lists.count("abcd_common_cuts")) {
+                config_.abcd.common_cuts = parser.lists["abcd_common_cuts"];
             }
             
             // Generate ABCD bins dynamically from axis definitions
@@ -358,14 +358,14 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
         //     config_.abcd.predicted_region = parser.values["abcd.predicted_region"];
         // }
         
-        if (parser.values.count("abcd.formula")) {
-            config_.abcd.formula = parser.values["abcd.formula"];
+        if (parser.values.count("abcd_formula")) {
+            config_.abcd.formula = parser.values["abcd_formula"];
         } else {
             config_.abcd.formula = "(@0*@1/@2)";  // Default ABCD formula
         }
         
-        if (parser.values.count("abcd.generate_datacards")) {
-            config_.abcd.generate_datacards = (parser.values["abcd.generate_datacards"] == "true");
+        if (parser.values.count("abcd_generate_datacards")) {
+            config_.abcd.generate_datacards = (parser.values["abcd_generate_datacards"] == "true");
         } else {
             config_.abcd.generate_datacards = true;  // Default: generate datacards for ABCD
         }
