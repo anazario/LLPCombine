@@ -19,52 +19,52 @@ from string import Template
 def create_abcd_systematics_auto(syst_prefix, precision_value):
     """Create ABCD systematics using auto placeholders (works for any predicted region)"""
     
-    systematics_yaml = f"""abcd_systematics:
-      # Rate parameters for control regions (auto-mapped at runtime)
-      - name: "scale_{syst_prefix}_control1"
-        type: "rateParam"
-        value: 1.0
-        bins: ["auto_control_1"]
-        processes: ["backgrounds"]
-      
-      - name: "scale_{syst_prefix}_control2"
-        type: "rateParam"
-        value: 1.0
-        bins: ["auto_control_2"]
-        processes: ["backgrounds"]
-      
-      - name: "scale_{syst_prefix}_control3"
-        type: "rateParam"
-        value: 1.0
-        bins: ["auto_control_3"]
-        processes: ["backgrounds"]
+    systematics_yaml = f"""  abcd_systematics:
+    # Rate parameters for control regions (auto-mapped at runtime)
+    - name: "scale_{syst_prefix}_control1"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+    
+    - name: "scale_{syst_prefix}_control2"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+    
+    - name: "scale_{syst_prefix}_control3"
+      type: "rateParam"
+      value: 1.0
+      bins: ["auto_control_3"]
+      processes: ["backgrounds"]
 
-      # ABCD constraint (formula auto-generated based on predicted region)
-      - name: "abcd_{syst_prefix}_closure_constraint"
-        type: "rateParam"
-        formula: "auto"
-        bins: ["auto_predicted"]
-        processes: ["backgrounds"]
+    # ABCD constraint (formula auto-generated based on predicted region)
+    - name: "abcd_{syst_prefix}_closure_constraint"
+      type: "rateParam"
+      formula: "auto"
+      bins: ["auto_predicted"]
+      processes: ["backgrounds"]
 
-precision_systematics:
-      # Precision systematics for control regions only
-      - name: "{syst_prefix}_precision_control1"
-        type: "lnN"
-        value: {precision_value}
-        bins: ["auto_control_1"]
-        processes: ["backgrounds"]
-      
-      - name: "{syst_prefix}_precision_control2"
-        type: "lnN"
-        value: {precision_value}
-        bins: ["auto_control_2"]
-        processes: ["backgrounds"]
-      
-      - name: "{syst_prefix}_precision_control3"
-        type: "lnN"
-        value: {precision_value}
-        bins: ["auto_control_3"]
-        processes: ["backgrounds"]"""
+  precision_systematics:
+    # Precision systematics for control regions only
+    - name: "{syst_prefix}_precision_control1"
+      type: "lnN"
+      value: {precision_value}
+      bins: ["auto_control_1"]
+      processes: ["backgrounds"]
+    
+    - name: "{syst_prefix}_precision_control2"
+      type: "lnN"
+      value: {precision_value}
+      bins: ["auto_control_2"]
+      processes: ["backgrounds"]
+    
+    - name: "{syst_prefix}_precision_control3"
+      type: "lnN"
+      value: {precision_value}
+      bins: ["auto_control_3"]
+      processes: ["backgrounds"]"""
     
     return systematics_yaml
 
