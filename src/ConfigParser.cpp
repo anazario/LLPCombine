@@ -349,6 +349,12 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             // Parse common cuts
             if (parser.lists.count("abcd_common_cuts")) {
                 config_.abcd.common_cuts = parser.lists["abcd_common_cuts"];
+                std::cout << "DEBUG: Found " << config_.abcd.common_cuts.size() << " common cuts:" << std::endl;
+                for (const auto& cut : config_.abcd.common_cuts) {
+                    std::cout << "  - " << cut << std::endl;
+                }
+            } else {
+                std::cout << "DEBUG: No abcd_common_cuts found in config" << std::endl;
             }
             
             // Generate ABCD bins dynamically from axis definitions
