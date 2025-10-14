@@ -117,8 +117,13 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     if (!config.abcd.IsValid()) {
         std::cerr << "ABCD configuration validation failed:" << std::endl;
         std::cerr << "  Regions count: " << config.abcd.regions.size() << " (expected 4)" << std::endl;
-        std::cerr << "  Predicted region: '" << config.abcd.predicted_region << "'" << std::endl;
         throw std::runtime_error("ABCD configuration is invalid");
+    }
+    
+    // Validate predicted region is set (either from config or command line)
+    if (config.abcd.predicted_region.empty()) {
+        std::cerr << "Error: No predicted region specified. This should be set by BF.x" << std::endl;
+        throw std::runtime_error("No predicted region specified");
     }
     
     // Get ABCD regions in proper order from config

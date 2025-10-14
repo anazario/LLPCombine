@@ -19,12 +19,16 @@ void PrintHelp(const std::string& program_name) {
     std::cout << "  -h, --help              Show this help message and exit\n";
     std::cout << "  -o, --output-dir DIR    Output directory for datacards (default: datacards)\n";
     std::cout << "  -v, --verbose           Enable verbose output\n";
-    std::cout << "  -r, --run-combine       Run macro/launchCombine.sh after generating datacards\n\n";
+    std::cout << "  -r, --run-combine       Run macro/launchCombine.sh after generating datacards\n";
+    std::cout << "  -p, --predict REGION    Predict specific ABCD region (A, B, C, or D)\n";
+    std::cout << "                          Only valid for ABCD method, overrides config setting\n\n";
     std::cout << "Examples:\n";
     std::cout << "  " << program_name << " analysis_results.json\n";
     std::cout << "  " << program_name << " --output-dir my_datacards results.json\n";
     std::cout << "  " << program_name << " -o datacards_run2 -v ./json/comprehensive_v36.json\n";
-    std::cout << "  " << program_name << " -r -v results.json config/abcd_example.yaml  # ABCD analysis\n\n";
+    std::cout << "  " << program_name << " -r -v results.json config/abcd_example.yaml  # ABCD analysis\n";
+    std::cout << "  " << program_name << " --predict A results.json config/abcd.yaml    # Predict region A\n";
+    std::cout << "  " << program_name << " -p B -o datacards_B results.json config/abcd.yaml  # Predict region B\n\n";
 }
 
 // Function to detect ABCD method from JSON metadata
@@ -61,6 +65,7 @@ int main(int argc, char* argv[]) {
     std::string input_json = "";
     std::string config_file = "";
     std::string datacard_dir = "datacards";
+    std::string predict_region = "";  // New option for ABCD prediction
     bool verbose = false;
     bool help = false;
     bool run_combine = false;
@@ -80,6 +85,19 @@ int main(int argc, char* argv[]) {
                 datacard_dir = argv[++i];
             } else {
                 std::cerr << "Error: " << arg << " requires an argument" << std::endl;
+                return 1;
+            }
+        } else if (arg == "-p" || arg == "--predict") {
+            if (i + 1 < argc) {
+                predict_region = argv[++i];
+                // Validate region
+                if (predict_region != "A" && predict_region != "B" && 
+                    predict_region != "C" && predict_region != "D") {
+                    std::cerr << "Error: --predict requires A, B, C, or D" << std::endl;
+                    return 1;
+                }
+            } else {
+                std::cerr << "Error: " << arg << " requires an argument (A, B, C, or D)" << std::endl;
                 return 1;
             }
         } else if (arg.front() == '-') {
@@ -141,11 +159,29 @@ int main(int argc, char* argv[]) {
         is_abcd = IsABCDMethod(input_json);
     }
     
+    // Handle ABCD prediction defaults and validation
+    if (is_abcd) {
+        if (predict_region.empty()) {
+            predict_region = "A";  // Default to predicting region A
+        }
+        if (!predict_region.empty() && configParser) {
+            // Override the predicted region in the config
+            // Note: We'll need to modify the BuildFit method to accept the override
+            analysis_config.abcd.predicted_region = "region_" + predict_region;
+        }
+    } else if (!predict_region.empty()) {
+        std::cerr << "Error: --predict option is only valid for ABCD method configurations" << std::endl;
+        return 1;
+    }
+
     if (verbose) {
         std::cout << "=== LLPCombine BuildFit (BF) ===" << std::endl;
         std::cout << "Input JSON: " << input_json << std::endl;
         std::cout << "Config file: " << (config_file.empty() ? "not provided" : config_file) << std::endl;
         std::cout << "Analysis method: " << (is_abcd ? "ABCD" : "Standard") << std::endl;
+        if (is_abcd) {
+            std::cout << "Predicted region: " << predict_region << std::endl;
+        }
         std::cout << "Output directory: " << datacard_dir << std::endl;
         std::cout << "Run Combine: " << (run_combine ? "yes" : "no") << std::endl;
         std::cout << std::endl;
@@ -161,7 +197,7 @@ int main(int argc, char* argv[]) {
     
     if (is_abcd && verbose) {
         std::cout << "Loaded ABCD configuration:" << std::endl;
-        std::cout << "  Predicted region: " << analysis_config.abcd.predicted_region << std::endl;
+        std::cout << "  Predicted region: " << analysis_config.abcd.predicted_region << " (region_" << predict_region << ")" << std::endl;
         std::cout << "  Formula: " << analysis_config.abcd.formula << std::endl;
         std::cout << "  Generate datacards: " << (analysis_config.abcd.generate_datacards ? "yes" : "no") << std::endl;
         std::cout << "  Regions count: " << analysis_config.abcd.regions.size() << std::endl;
