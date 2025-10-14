@@ -1,0 +1,52 @@
+# Explicit ABCD Configuration Template
+# Use with generate_explicit_abcd_config.py to create specific configurations
+
+analysis:
+  method: "ABCD"
+  name: "${ANALYSIS_NAME}"
+  luminosity: ${LUMINOSITY}
+  output_json: "${OUTPUT_JSON}"
+  output_dir: "${OUTPUT_DIR}"
+
+samples:
+  backgrounds: ${BACKGROUNDS}
+  signals: ${SIGNALS}
+  signal_points: ${SIGNAL_POINTS}
+  data: ${DATA}
+
+# Explicit ABCD structure  
+x_axis:
+  name: "${X_AXIS_NAME}"
+  x_low:
+    description: "${X_LOW_DESC}"
+    cuts:
+${X_LOW_CUTS}
+  x_high:
+    description: "${X_HIGH_DESC}"
+    cuts:
+${X_HIGH_CUTS}
+
+y_axis:
+  name: "${Y_AXIS_NAME}"
+  y_low:
+    description: "${Y_LOW_DESC}"
+    cuts:
+${Y_LOW_CUTS}
+  y_high:
+    description: "${Y_HIGH_DESC}"
+    cuts:
+${Y_HIGH_CUTS}
+
+abcd_common_cuts: ${COMMON_CUTS}
+abcd_formula: "${ABCD_FORMULA}"
+abcd_generate_datacards: ${GENERATE_DATACARDS}
+
+# Flexible systematics - completely parameterized
+systematics:
+${SYSTEMATICS_BLOCK}
+
+# Runtime options
+options:
+  verbosity: ${VERBOSITY}
+  parallel: ${PARALLEL}
+  dry_run: ${DRY_RUN}
