@@ -355,6 +355,16 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
                 }
             } else {
                 std::cout << "DEBUG: No abcd_common_cuts found in config" << std::endl;
+                std::cout << "DEBUG: Available list keys:" << std::endl;
+                for (const auto& pair : parser.lists) {
+                    std::cout << "  - " << pair.first << " (size: " << pair.second.size() << ")" << std::endl;
+                }
+                std::cout << "DEBUG: Available value keys containing 'common':" << std::endl;
+                for (const auto& pair : parser.values) {
+                    if (pair.first.find("common") != std::string::npos) {
+                        std::cout << "  - " << pair.first << " = " << pair.second << std::endl;
+                    }
+                }
             }
             
             // Generate ABCD bins dynamically from axis definitions

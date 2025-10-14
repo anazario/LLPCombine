@@ -37,7 +37,8 @@ ${Y_LOW_CUTS}
     cuts:
 ${Y_HIGH_CUTS}
 
-abcd_common_cuts: ${COMMON_CUTS}
+abcd_common_cuts:
+${COMMON_CUTS}
 abcd_formula: "${ABCD_FORMULA}"
 abcd_generate_datacards: ${GENERATE_DATACARDS}
 

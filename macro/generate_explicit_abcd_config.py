@@ -260,12 +260,13 @@ def main():
     systematics = create_abcd_systematics_auto(syst_prefix, args.precision_value)
     
     # Format cuts as YAML list with proper indentation
-    def format_cuts_as_yaml(cuts_list):
-        """Format cuts list as proper YAML list with indentation"""
-        formatted_cuts = []
-        for cut in cuts_list:
-            formatted_cuts.append(f'        - "{cut}"')
-        return "\n".join(formatted_cuts)
+    def format_cuts_as_yaml(cuts_list, indent=6):
+        """Format cuts list as proper YAML list with given indentation (spaces)."""
+        if not cuts_list:
+            return ' ' * indent + "[]\n"
+        return "".join(f"{' ' * indent}- \"{cut}\"\n" for cut in cuts_list)
+
+
     
     # Create substitution dictionary
     substitutions = {
@@ -279,15 +280,15 @@ def main():
         "DATA": json.dumps(data),
         "X_AXIS_NAME": x_axis_name,
         "X_LOW_DESC": x_low_desc,
-        "X_LOW_CUTS": format_cuts_as_yaml(x_low_cuts),
+        "X_LOW_CUTS": format_cuts_as_yaml(x_low_cuts,6),
         "X_HIGH_DESC": x_high_desc,
-        "X_HIGH_CUTS": format_cuts_as_yaml(x_high_cuts),
+        "X_HIGH_CUTS": format_cuts_as_yaml(x_high_cuts,6),
         "Y_AXIS_NAME": y_axis_name,
         "Y_LOW_DESC": y_low_desc,
-        "Y_LOW_CUTS": format_cuts_as_yaml(y_low_cuts),
+        "Y_LOW_CUTS": format_cuts_as_yaml(y_low_cuts,6),
         "Y_HIGH_DESC": y_high_desc,
-        "Y_HIGH_CUTS": format_cuts_as_yaml(y_high_cuts),
-        "COMMON_CUTS": json.dumps(common_cuts),
+        "Y_HIGH_CUTS": format_cuts_as_yaml(y_high_cuts,6),
+        "COMMON_CUTS": format_cuts_as_yaml(common_cuts),
         "ABCD_FORMULA": "(@0*@1/@2)",
         "GENERATE_DATACARDS": "true",
         "VERBOSITY": args.verbosity,
