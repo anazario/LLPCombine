@@ -106,7 +106,7 @@ struct AnalysisConfig {
     std::vector<SystematicConfig> experimental_systematics;
     std::vector<SystematicConfig> abcd_systematics;
     std::vector<SystematicConfig> precision_systematics;
-    
+  
     // Runtime options
     int verbosity;
     bool parallel;
@@ -127,6 +127,10 @@ public:
     bool ValidateConfig() const;
     bool ValidateABCDConfig() const;
     void ParseSystematics(const SimpleYAMLParser& parser);
+    void ParseSystematicBlock(const SimpleYAMLParser& parser,
+                              const std::string& prefix,
+                              std::vector<SystematicConfig>& target);
+
     void ParseSystematicCategory(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics);
     void ParseSystematicCategoryNested(const SimpleYAMLParser& parser, const std::string& category_prefix, std::vector<SystematicConfig>& systematics);
     void ParseSystematicsFromCombinedList(const SimpleYAMLParser& parser);
