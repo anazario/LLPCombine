@@ -283,14 +283,23 @@ void BuildFitInput::ConstructBkgBinObjects( countmap countResults, summap sumRes
 void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
-		analysisbins[binname]->totalData.first = "data";
-		analysisbins[binname]->totalData.second = new Process("data");
+		// Use the first data process name from the config
+		std::string first_data_process = "";
+		for( const auto& it2: countResults){
+			proc_cut_pair cutpairkey = it2.first;
+			if( binname == cutpairkey.second ) {
+				first_data_process = cutpairkey.first;
+				break;
+			}
+		}
+		analysisbins[binname]->totalData.first = first_data_process.empty() ? "data" : first_data_process;
+		analysisbins[binname]->totalData.second = new Process(first_data_process.empty() ? "data" : first_data_process);
 		for( const auto& it2: countResults){
 
 			proc_cut_pair cutpairkey = it2.first;
 			if( binname != cutpairkey.second ) continue;
 			std::string binname2 = it2.first.second;
-			std::string procname = "data";//it2.first.first;
+			std::string procname = it2.first.first;  // Use actual data process name from config
 			std::cout << "procname " << procname << " binname " << binname2 << endl;	
 			Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
 			//analysisbins[binname]->data.insert({procname, thisproc} );
