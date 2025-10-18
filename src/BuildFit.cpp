@@ -1,4 +1,6 @@
 #include "BuildFit.h"
+#include <set>
+#include <cmath>
 
 ch::Categories BuildFit::BuildCats(JSONFactory* j){
 	ch::Categories cats{};
@@ -45,15 +47,18 @@ std::vector<std::string> BuildFit::GetBkgProcs(JSONFactory* j){
                 std::string binname = it.key();
                 for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
                 //      std::cout<< it2.key()<<"\n";
-                        if( BFTool::ContainsAnySubstring( it2.key(), sigkeys)){
+                        if( BFTool::ContainsAnySubstring( it2.key(), sigkeys) || it2.key() == "data_obs" || BFTool::ContainsAnySubstring(it2.key(),datakeys)){
                                 continue;
                         }
                         else{
 				bkgprocs.push_back(it2.key());
 			}
 		}
-	}
-	return bkgprocs;
+	}//make this set unique 
+	std::set<std::string> my_bkg_set(bkgprocs.begin(), bkgprocs.end());
+	std::vector<std::string> bkgprocsunique(my_bkg_set.begin(), my_bkg_set.end());
+
+	return bkgprocsunique;
 }
 std::vector<std::string> BuildFit::ExtractSignalDetails( std::string signalPoint){
 
@@ -78,6 +83,78 @@ std::vector<std::string> BuildFit::GetBinSet( JSONFactory* j){
         }
         return bins;
 
+}
+
+std::vector<std::string> BuildFit::GetDataProcs(JSONFactory* j){
+	
+	std::vector<std::string> bkgprocs{};
+	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
+                //inner loop process iterator
+                std::string binname = it.key();
+                for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
+                //      std::cout<< it2.key()<<"\n";
+                        if(  BFTool::ContainsAnySubstring(it2.key(),datakeys) ){
+                                bkgprocs.push_back(it2.key());
+                        }
+                }
+        }//make this set unique
+        std::set<std::string> my_bkg_set(bkgprocs.begin(), bkgprocs.end());
+        std::vector<std::string> bkgprocsunique(my_bkg_set.begin(), my_bkg_set.end());
+
+	return bkgprocsunique;	
+
+}
+
+std::map<std::string, float> BuildFit::LoadDataProcesses(JSONFactory* j, std::vector<std::string> dataKeys){
+	std::map<std::string, float> obs_rates ={};
+	float obs_rate=0.;
+        for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
+                //inner loop process iterator
+                std::string binname = it.key();
+                //assign yield to obs bin map
+		for(int i=0; i< dataKeys.size(); i++){
+                	json json_array = j->j[binname][dataKeys[i]];
+               		obs_rate += json_array[1].get<float>();
+       		}
+		obs_rates[binname] = obs_rate;
+		obs_rate=0.;
+	}
+        return obs_rates;
+
+}
+
+std::map<std::string, float> BuildFit::LoadObservations(JSONFactory* j){
+	std::map<std::string, float> obs_rates ={};
+	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
+                //inner loop process iterator
+                std::string binname = it.key();
+                //assign yield to obs bin map
+		json json_array = j->j[binname]["data_obs"];
+            	obs_rates[binname] = json_array[1].get<float>();				 
+        }
+	return obs_rates;
+	
+}
+
+double BuildFit::GetStatFracError(JSONFactory* j, std::string binName, std::vector<std::string> bkgprocs ){
+	double fracError=0;
+	double statError=0;
+	double bkgYield=0;
+
+                //assign yield to obs bin map
+	for(int i=0; i<bkgprocs.size(); i++){
+        	json json_array = j->j[binName][bkgprocs[i]];
+               	bkgYield += json_array[1].get<float>();
+		statError += json_array[2].get<float>()*json_array[2].get<float>();
+	}
+	if(bkgYield>0){
+		fracError = std::sqrt(statError)/bkgYield;
+	}
+	else{
+		fracError = 1.;
+	}
+        
+        return fracError;
 }
 
 void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::string datacard_dir){
@@ -143,7 +220,21 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     
     // Standard CombineHarvester setup
     ch::Categories cats = BuildCats(j);
-    std::map<std::string, float> obs_rates = BuildAsimovData(j);
+    
+    // Use enhanced data processing for observations
+    std::map<std::string, float> obs_rates;
+    if (!GetDataProcs(j).empty()) {
+        // Use real data if available
+        obs_rates = LoadDataProcesses(j, datakeys);
+        std::cout << "Using real data observations from: ";
+        for (const auto& key : datakeys) std::cout << key << " ";
+        std::cout << std::endl;
+    } else {
+        // Fall back to Asimov data
+        obs_rates = BuildAsimovData(j);
+        std::cout << "Using Asimov data (MC-based observations)" << std::endl;
+    }
+    
     std::vector<std::string> bkgprocs = GetBkgProcs(j);
     std::vector<std::string> signalDetails = ExtractSignalDetails(signalPoint);
     
@@ -275,6 +366,181 @@ std::string BuildFit::JoinStrings(const std::vector<std::string>& strings, const
         result += delimiter + strings[i];
     }
     return result;
+}
+
+void BuildFit::Build9binFitData(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap){
+
+	ch::Categories cats = BuildCats(j);
+	std::cout<<"building obs rates \n";
+	std::map<std::string, float> obs_rates = LoadDataProcesses(j, {"MET18"});
+	std::cout<<"Getting process list\n";
+	std::vector<std::string> bkgprocs = GetDataProcs(j);
+	std::cout<<"Parse Signal point\n";
+	std::vector<std::string> signalDetails = ExtractSignalDetails( signalPoint );
+	std::cout<<"Build cb objects\n";
+
+	cb.AddObservations({"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, cats);
+	cb.AddProcesses(   {"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, bkgprocs, cats, false);
+	cb.AddProcesses(   {signalDetails[2]}, {signalDetails[0]}, {"13.6Tev"}, {signalDetails[1]}, {signalPoint}, cats, true);
+	
+	cb.ForEachObs([&](ch::Observation *x){
+            if( obs_rates[x->bin()]==0){
+                x->set_rate(1e-8);
+           }
+           else{
+            x->set_rate(obs_rates[x->bin()]);
+           }
+        });
+	//use ch1 to set expectation in ch2
+        cb.ForEachProc([&j](ch::Process *x) {
+            std::cout<<x->bin()<<" "<<x->process()<<"\n";
+            json json_array = j->j[x->bin()][x->process()];
+            float temprate = json_array[1].get<float>();
+	    std::string c1 = "Had";
+	    std::string c2 = "Lep";
+	    size_t foundPos = x->bin().find(c2);
+	    if( foundPos != std::string::npos){
+	    	std::string mirrorbin = x->bin();
+	    	mirrorbin.replace(foundPos, c2.length(), c1);
+		json_array = j->j[mirrorbin][x->process()];
+		temprate = json_array[1].get<float>();
+            	if(temprate==0){
+               	 	x->set_rate(1e-8);
+            	}
+           	else{
+                 	x->set_rate(temprate);
+            	}
+	    }
+	    else{
+	    	if(temprate==0){
+                 	x->set_rate(1e-8);
+                }
+                else{
+                 	x->set_rate(temprate);
+                }
+	    }
+            //x->set_rate(json_array[1].get<float>());
+        });
+
+	//map each 9 bin together.. could do small lnN or exact rate
+	std::vector<std::string> bincoords = { "00","10","20", "01","11","21","02","12","22"};
+	std::string ch1 = "CRHad";
+        std::string ch2 = "CRLep";
+	for(int i=0; i<bincoords.size(); i++){
+		cb.cp().bin({ch1+bincoords[i], ch2+bincoords[i]}).AddSyst(cb, "binShape"+bincoords[i], "lnN", SystMap<>::init(1.05));			
+	}
+	//make ch2 normalization
+	std::vector<std::string> ch2bins = channelMap["chLep1"]; 
+	cb.cp().bin(ch2bins).AddSyst(cb, "lep_norm", "rateParam", SystMap<>::init(0.3));
+	cb.WriteDatacard(datacard_dir+"/"+signalPoint+"/"+signalPoint+".txt");
+}
+
+void BuildFit::Build9binFitMC(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap){
+
+	ch::Categories cats = BuildCats(j);
+        std::cout<<"building obs rates \n";
+        std::map<std::string, float> obs_rates = LoadDataProcesses(j, {"MET18"});
+        std::cout<<"Getting process list\n";
+        std::vector<std::string> bkgprocs = GetBkgProcs(j);
+        std::cout<<"Parse Signal point\n";
+        std::vector<std::string> signalDetails = ExtractSignalDetails( signalPoint);
+        std::cout<<"Build cb objects\n";
+
+	cb.AddObservations({"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, cats);
+        cb.AddProcesses(   {"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, bkgprocs, cats, false);
+        cb.AddProcesses(   {signalDetails[2]}, {signalDetails[0]}, {"13.6Tev"}, {signalDetails[1]}, {signalPoint}, cats, true);
+        cb.ForEachObs([&](ch::Observation *x){
+            if( obs_rates[x->bin()]==0){
+		x->set_rate(1e-8);
+	   }  
+	   else{
+	    x->set_rate(obs_rates[x->bin()]);
+	   }
+        });
+        cb.ForEachProc([&j](ch::Process *x) {
+            std::cout<<x->bin()<<" "<<x->process()<<"\n";
+            json json_array = j->j[x->bin()][x->process()];
+	    float temprate = json_array[1].get<float>();
+	    if(temprate==0){
+		x->set_rate(1e-8);
+	    }
+	    else{
+		x->set_rate(temprate);
+	    }
+            //x->set_rate(json_array[1].get<float>());
+        });
+	//map everything together
+	//global rate for lumi normalization
+	std::vector<std::string> binset = GetBinSet(j);
+       	cb.cp().bin(binset).AddSyst(cb, "LumiScale", "rateParam", SystMap<>::init(1.0));
+
+	//map each bin together
+	std::vector<std::string> chHad1 = channelMap["chHad1"];
+	std::vector<std::string> chLep1 = channelMap["chLep1"];
+	for(int i=0; i<chHad1.size(); i++){// frac error based on stat error
+		double fracError= GetStatFracError(j, chHad1[i], bkgprocs );
+		cb.cp().bin({chHad1[i], chLep1[i]}).AddSyst(cb, "binShape"+std::to_string(i), "lnN", SystMap<>::init(1+fracError));
+		std::cout<<"lnN for "+chHad1[i]<<" "<<1+fracError<<"\n";
+	}
+	//add unpenalized normalization for chLep
+	cb.cp().bin(chLep1).AddSyst(cb, "LepNorm", "rateParam", SystMap<>::init(1.0));	
+	cb.WriteDatacard(datacard_dir+"/"+signalPoint+"/"+signalPoint+".txt");
+
+}
+
+void BuildFit::BuildPseudoShapeTemplateFit(JSONFactory* j, JSONFactory* jup, JSONFactory* jdn,  std::string signalPoint, std::string datacard_dir, channelmap channelMap){	
+
+	std::cout<<" using channel map:\n";
+	for (const auto& pair : channelMap) {
+        std::cout << "Channel: " << pair.first << std::endl;
+        std::cout << "Bins: ";
+        for (const std::string& b : pair.second) {
+            std::cout << b << " ";
+        }
+        std::cout << std::endl;
+    	}
+	ch::Categories cats = BuildCats(j);
+	std::map<std::string, float> obs_rates = LoadObservations(j);
+        std::cout<<"Getting process list\n";
+        std::vector<std::string> bkgprocs = GetBkgProcs(j);
+        std::cout<<"Parse Signal point\n";
+        std::vector<std::string> signalDetails = ExtractSignalDetails( signalPoint);
+        std::cout<<"Build cb objects\n";
+
+        cb.AddObservations({"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, cats);
+        cb.AddProcesses(   {"*"}, {signalDetails[0]}, {"13.6TeV"}, {signalDetails[1]}, bkgprocs, cats, false);
+        cb.AddProcesses(   {signalDetails[2]}, {signalDetails[0]}, {"13.6Tev"}, {signalDetails[1]}, {signalPoint}, cats, true);
+        cb.ForEachObs([&](ch::Observation *x){
+            if( obs_rates[x->bin()]==0){
+                x->set_rate(1e-8);
+           }
+           else{
+            x->set_rate(obs_rates[x->bin()]);
+           }
+        });
+        cb.ForEachProc([&j](ch::Process *x) {
+            std::cout<<x->bin()<<" "<<x->process()<<"\n";
+            json json_array = j->j[x->bin()][x->process()];
+            float temprate = json_array[1].get<float>();
+            if(temprate==0){
+                x->set_rate(1e-8);
+            }
+            else{
+                x->set_rate(temprate);
+            }
+        });
+
+	// Add shape systematics using up/down variations
+	std::vector<std::string> binset = GetBinSet(j);
+	for (const std::string& bin : binset) {
+		for (const std::string& proc : bkgprocs) {
+			// Add shape systematic for each process in each bin
+			cb.cp().bin({bin}).process({proc}).AddSyst(cb, "shape_"+proc+"_"+bin, "shape", 
+				SystMap<>::init(1.0));
+		}
+	}
+
+	cb.WriteDatacard(datacard_dir+"/"+signalPoint+"/"+signalPoint+".txt");
 }
 
 

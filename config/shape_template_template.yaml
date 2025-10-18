@@ -1,0 +1,101 @@
+analysis_info:
+  name: "Pseudo-Shape Template Analysis"
+  description: "Shape template analysis with up/down systematic variations"
+  analysis_type: "shape_template"
+
+fit_configuration:
+  type: "shape_template"
+  signal_point: "gogoZ_1500_500_100_10"
+  datacard_output_dir: "./datacards"
+
+# Input data files for shape variations
+input_files:
+  nominal: "input_nominal.json"
+  up_variation: "input_up.json"  
+  down_variation: "input_down.json"
+
+# Channel mapping for shape template fits
+channel_mapping:
+  # Define channels and their associated bins
+  signal_region:
+    - "SR1"
+    - "SR2"
+  control_region:
+    - "CR1"
+    - "CR2"
+  validation_region:
+    - "VR1"
+    - "VR2"
+
+# Data processing configuration  
+data_processing:
+  use_real_data: true
+  observation_source: "data_obs"  # Use data_obs field from JSON
+  
+  # Shape variation handling
+  shape_variations:
+    include_up_down: true
+    systematic_name_pattern: "shape_{process}_{bin}"
+
+# Systematic uncertainties
+systematics:
+  shape_systematics:
+    # Process-specific shape variations
+    - name: "shape_background"
+      type: "shape"
+      value: 1.0
+      applies_to: "background_processes"
+      variations: ["up", "down"]
+      description: "Background shape systematic with up/down variations"
+    
+    - name: "shape_signal"
+      type: "shape"
+      value: 1.0
+      applies_to: "signal_processes"
+      variations: ["up", "down"]
+      description: "Signal shape systematic with up/down variations"
+  
+  normalization:
+    # Global normalization uncertainties
+    - name: "lumi"
+      type: "lnN"
+      value: 1.026  # 2.6% luminosity uncertainty
+      applies_to: "mc_processes"
+      description: "Luminosity uncertainty"
+    
+    - name: "theory"
+      type: "lnN"
+      value: 1.15   # 15% theory uncertainty
+      applies_to: "signal_processes"
+      description: "Theoretical cross-section uncertainty"
+
+# Processing configuration
+processing:
+  handle_zero_bins: true
+  zero_bin_replacement: 1e-8
+  
+  # Shape processing
+  shape_processing:
+    smooth_variations: true
+    check_variation_consistency: true
+    minimum_shape_change: 0.01  # Minimum 1% change for shape variations
+
+# Background processes
+background_processes:
+  - "QCD"
+  - "TTJets"
+  - "WJets"
+  - "ZJets"
+  - "VV"
+
+# Signal processes  
+signal_processes:
+  - "gogoZ"
+  - "gogoG"
+
+# Output configuration
+output:
+  verbose: true
+  print_shape_summary: true
+  print_systematic_effects: true
+  include_shape_plots: false  # Set true to generate shape comparison plots

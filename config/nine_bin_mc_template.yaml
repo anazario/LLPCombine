@@ -1,0 +1,74 @@
+analysis_info:
+  name: "9-bin MC Analysis"
+  description: "Nine-bin analysis using MC-based observations with statistical correlation constraints"
+  analysis_type: "nine_bin_mc"
+
+fit_configuration:
+  type: "nine_bin_mc"
+  signal_point: "gogoZ_1500_500_100_10"
+  datacard_output_dir: "./datacards"
+
+# Channel mapping for 9-bin analysis
+channel_mapping:
+  chHad1: 
+    - "CRHad00"
+    - "CRHad10" 
+    - "CRHad20"
+    - "CRHad01"
+    - "CRHad11"
+    - "CRHad21"
+    - "CRHad02"
+    - "CRHad12"
+    - "CRHad22"
+  chLep1:
+    - "CRLep00"
+    - "CRLep10"
+    - "CRLep20"
+    - "CRLep01"
+    - "CRLep11"
+    - "CRLep21"
+    - "CRLep02"
+    - "CRLep12"
+    - "CRLep22"
+
+# Data processing configuration
+data_processing:
+  use_real_data: false  # Set to true if using real data
+  data_keys: ["MET18"]  # Data processes to use
+  observation_source: "mc"  # "mc" or "data"
+
+# Systematic uncertainties
+systematics:
+  global:
+    - name: "LumiScale"
+      type: "rateParam"
+      value: 1.0
+      applies_to: "all_bins"
+      description: "Global luminosity scale factor"
+  
+  bin_correlations:
+    # Statistical correlations between Had/Lep channels
+    - name: "binShape"
+      type: "lnN"
+      value: "auto_stat_error"  # Will be calculated from MC statistics
+      correlation_scheme: "had_lep_pairs"
+      description: "Statistical correlation between hadronic and leptonic channels"
+  
+  normalization:
+    - name: "LepNorm"
+      type: "rateParam"
+      value: 1.0
+      applies_to: "leptonic_channels"
+      description: "Floating normalization for leptonic channels"
+
+# Processing configuration
+processing:
+  handle_zero_bins: true
+  zero_bin_replacement: 1e-8
+  statistical_error_threshold: 0.1
+
+# Output configuration
+output:
+  verbose: true
+  print_channel_mapping: true
+  print_systematics_summary: true

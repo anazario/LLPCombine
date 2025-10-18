@@ -1,0 +1,82 @@
+analysis_info:
+  name: "9-bin Data Analysis"
+  description: "Nine-bin analysis using real data observations with data-driven predictions"
+  analysis_type: "nine_bin_data"
+
+fit_configuration:
+  type: "nine_bin_data"
+  signal_point: "gogoZ_1500_500_100_10"
+  datacard_output_dir: "./datacards"
+
+# Channel mapping for 9-bin analysis
+channel_mapping:
+  chHad1: 
+    - "CRHad00"
+    - "CRHad10" 
+    - "CRHad20"
+    - "CRHad01"
+    - "CRHad11"
+    - "CRHad21"
+    - "CRHad02"
+    - "CRHad12"
+    - "CRHad22"
+  chLep1:
+    - "CRLep00"
+    - "CRLep10"
+    - "CRLep20"
+    - "CRLep01"
+    - "CRLep11"
+    - "CRLep21"
+    - "CRLep02"
+    - "CRLep12"
+    - "CRLep22"
+
+# Data processing configuration
+data_processing:
+  use_real_data: true
+  data_keys: ["MET18"]  # Real data processes
+  observation_source: "data"
+  
+  # Data-driven prediction scheme
+  prediction_scheme:
+    # Use hadronic channel to predict leptonic channel
+    mirror_channels: true
+    source_channel_pattern: "Had"
+    target_channel_pattern: "Lep"
+
+# Systematic uncertainties
+systematics:
+  shape_correlations:
+    # Bin-by-bin correlations for data-driven approach
+    - name: "binShape"
+      type: "lnN"
+      value: 1.05  # 5% uncertainty on bin-by-bin correlations
+      correlation_scheme: "coordinate_based"
+      bin_coordinates: ["00", "10", "20", "01", "11", "21", "02", "12", "22"]
+      description: "Shape correlation between hadronic and leptonic regions"
+  
+  normalization:
+    - name: "lep_norm" 
+      type: "rateParam"
+      value: 0.3  # Data-driven transfer factor
+      applies_to: "leptonic_channels"
+      description: "Data-driven transfer factor from hadronic to leptonic"
+
+# Processing configuration
+processing:
+  handle_zero_bins: true
+  zero_bin_replacement: 1e-8
+  use_data_driven_prediction: true
+  
+  # Data-driven methodology
+  data_driven:
+    use_mirror_bins: true
+    transfer_factor_uncertainty: 0.3
+    minimum_statistics_threshold: 1.0
+
+# Output configuration
+output:
+  verbose: true
+  print_channel_mapping: true
+  print_data_driven_setup: true
+  print_systematics_summary: true

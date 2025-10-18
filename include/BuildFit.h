@@ -21,6 +21,7 @@ using ch::syst::SystMap;
 using ch::syst::SystMapFunc;
 using ch::syst::bin;
 using json = nlohmann::json;
+typedef std::map<std::string, std::vector<std::string> > channelmap;
 
 class BuildFit{
 	
@@ -32,17 +33,25 @@ class BuildFit{
 	ch::Categories BuildCats(JSONFactory* j);
 	std::map<std::string, float> BuildAsimovData(JSONFactory* j);
         std::vector<std::string> GetBkgProcs(JSONFactory* j);
+	std::vector<std::string> GetDataProcs(JSONFactory* j);
 	std::vector<std::string> ExtractSignalDetails( std::string signalPoint);
 	std::vector<std::string> GetBinSet( JSONFactory* j);
+	std::map<std::string, float> LoadObservations(JSONFactory* j);
+	double GetStatFracError(JSONFactory* j, std::string binName, std::vector<std::string> bkgprocs );
+	std::map<std::string, float> LoadDataProcesses(JSONFactory* j, std::vector<std::string> dataKeys);
        
 	void BuildAsimovFit(JSONFactory* j, std::string signaPoint, std::string datacard_dir);
 	void BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string datacard_dir, const AnalysisConfig& config);
+	void BuildPseudoShapeTemplateFit(JSONFactory* j, JSONFactory* jup, JSONFactory* jdn, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
+	void Build9binFitMC(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
+	void Build9binFitData(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
 	
 	// Helper methods for ABCD implementation
 	void ApplySystematics(const std::vector<SystematicConfig>& systematics, const ABCDConfig& abcd);
 	std::string JoinStrings(const std::vector<std::string>& strings, const std::string& delimiter);
 	
 	std::vector<std::string> sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
+	std::vector<std::string> datakeys = { "MET18", "DisplacedJet18"};
 	
 
 };
