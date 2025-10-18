@@ -407,7 +407,19 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
         config_.signals = parser.lists["samples.signals"];
     }
     if (parser.lists.count("samples.data")) {
-        config_.data = parser.lists["samples.data"];
+        try {
+            const auto& data_list = parser.lists.at("samples.data");
+            config_.data.clear();
+            config_.data.reserve(data_list.size());
+            for (const auto& item : data_list) {
+                if (!item.empty()) {
+                    config_.data.push_back(item);
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Warning: Failed to parse samples.data: " << e.what() << std::endl;
+            config_.data.clear();
+        }
     }
     
     if (parser.lists.count("samples.signal_points")) {
