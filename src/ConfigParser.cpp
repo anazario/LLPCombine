@@ -299,10 +299,18 @@ bool ConfigParser::LoadConfig(const std::string& config_file) {
 }
 
 bool ConfigParser::LoadYAML(const std::string& config_file) {
+    std::cout << "DEBUG: Starting LoadYAML for " << config_file << std::endl;
     SimpleYAMLParser parser;
     
     if (!parser.parse(config_file)) {
         return false;
+    }
+    std::cout << "DEBUG: YAML parsing completed successfully" << std::endl;
+    
+    // Debug: Print all available keys in parser.lists
+    std::cout << "DEBUG: Available parser.lists keys:" << std::endl;
+    for (const auto& pair : parser.lists) {
+        std::cout << "  Key: '" << pair.first << "', Size: " << pair.second.size() << std::endl;
     }
     
     // Parse analysis section
@@ -333,11 +341,23 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             config_.abcd.use_explicit_format = true;
             
             // Parse x_axis
+            std::cout << "DEBUG: About to parse x_axis" << std::endl;
             config_.abcd.x_axis.name = parser.values["x_axis.name"];
+            std::cout << "DEBUG: Parsed x_axis.name: " << config_.abcd.x_axis.name << std::endl;
+            
             config_.abcd.x_axis.low_desc = parser.values["x_axis.x_low.description"];  
+            std::cout << "DEBUG: Parsed x_axis.x_low.description" << std::endl;
+            
             config_.abcd.x_axis.high_desc = parser.values["x_axis.x_high.description"];
+            std::cout << "DEBUG: Parsed x_axis.x_high.description" << std::endl;
+            
+            std::cout << "DEBUG: About to assign x_axis.x_low.cuts" << std::endl;
             config_.abcd.x_axis.low_cuts = parser.lists["x_axis.x_low.cuts"];
+            std::cout << "DEBUG: Successfully assigned x_axis.x_low.cuts" << std::endl;
+            
+            std::cout << "DEBUG: About to assign x_axis.x_high.cuts" << std::endl;
             config_.abcd.x_axis.high_cuts = parser.lists["x_axis.x_high.cuts"];
+            std::cout << "DEBUG: Successfully assigned x_axis.x_high.cuts" << std::endl;
             
             // Parse y_axis  
             config_.abcd.y_axis.name = parser.values["y_axis.name"];
@@ -406,20 +426,13 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     if (parser.lists.count("samples.signals")) {
         config_.signals = parser.lists["samples.signals"];
     }
+    std::cout << "DEBUG: About to parse samples.data" << std::endl;
     if (parser.lists.count("samples.data")) {
-        try {
-            const auto& data_list = parser.lists.at("samples.data");
-            config_.data.clear();
-            config_.data.reserve(data_list.size());
-            for (const auto& item : data_list) {
-                if (!item.empty()) {
-                    config_.data.push_back(item);
-                }
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Warning: Failed to parse samples.data: " << e.what() << std::endl;
-            config_.data.clear();
-        }
+        std::cout << "DEBUG: Found samples.data key, size: " << parser.lists["samples.data"].size() << std::endl;
+        config_.data = parser.lists["samples.data"];
+        std::cout << "DEBUG: Successfully assigned samples.data" << std::endl;
+    } else {
+        std::cout << "DEBUG: No samples.data key found" << std::endl;
     }
     
     if (parser.lists.count("samples.signal_points")) {
