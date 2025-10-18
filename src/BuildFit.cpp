@@ -112,7 +112,7 @@ std::map<std::string, float> BuildFit::LoadDataProcesses(JSONFactory* j, std::ve
                 //inner loop process iterator
                 std::string binname = it.key();
                 //assign yield to obs bin map
-		for(int i=0; i< dataKeys.size(); i++){
+		for(size_t i=0; i< dataKeys.size(); i++){
                 	json json_array = j->j[binname][dataKeys[i]];
                		obs_rate += json_array[1].get<float>();
        		}
@@ -142,7 +142,7 @@ double BuildFit::GetStatFracError(JSONFactory* j, std::string binName, std::vect
 	double bkgYield=0;
 
                 //assign yield to obs bin map
-	for(int i=0; i<bkgprocs.size(); i++){
+	for(size_t i=0; i<bkgprocs.size(); i++){
         	json json_array = j->j[binName][bkgprocs[i]];
                	bkgYield += json_array[1].get<float>();
 		statError += json_array[2].get<float>()*json_array[2].get<float>();
@@ -426,7 +426,7 @@ void BuildFit::Build9binFitData(JSONFactory* j, std::string signalPoint, std::st
 	std::vector<std::string> bincoords = { "00","10","20", "01","11","21","02","12","22"};
 	std::string ch1 = "CRHad";
         std::string ch2 = "CRLep";
-	for(int i=0; i<bincoords.size(); i++){
+	for(size_t i=0; i<bincoords.size(); i++){
 		cb.cp().bin({ch1+bincoords[i], ch2+bincoords[i]}).AddSyst(cb, "binShape"+bincoords[i], "lnN", SystMap<>::init(1.05));			
 	}
 	//make ch2 normalization
@@ -477,7 +477,7 @@ void BuildFit::Build9binFitMC(JSONFactory* j, std::string signalPoint, std::stri
 	//map each bin together
 	std::vector<std::string> chHad1 = channelMap["chHad1"];
 	std::vector<std::string> chLep1 = channelMap["chLep1"];
-	for(int i=0; i<chHad1.size(); i++){// frac error based on stat error
+	for(size_t i=0; i<chHad1.size(); i++){// frac error based on stat error
 		double fracError= GetStatFracError(j, chHad1[i], bkgprocs );
 		cb.cp().bin({chHad1[i], chLep1[i]}).AddSyst(cb, "binShape"+std::to_string(i), "lnN", SystMap<>::init(1+fracError));
 		std::cout<<"lnN for "+chHad1[i]<<" "<<1+fracError<<"\n";
