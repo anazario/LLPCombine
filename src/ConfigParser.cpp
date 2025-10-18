@@ -356,7 +356,13 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             std::cout << "DEBUG: Successfully assigned x_axis.x_low.cuts" << std::endl;
             
             std::cout << "DEBUG: About to assign x_axis.x_high.cuts" << std::endl;
-            config_.abcd.x_axis.high_cuts = parser.lists["x_axis.x_high.cuts"];
+            const auto& high_cuts_ref = parser.lists["x_axis.x_high.cuts"];
+            std::cout << "DEBUG: high_cuts_ref size: " << high_cuts_ref.size() << std::endl;
+            for (size_t i = 0; i < high_cuts_ref.size(); ++i) {
+                std::cout << "DEBUG: high_cuts[" << i << "] = '" << high_cuts_ref[i] << "'" << std::endl;
+            }
+            std::cout << "DEBUG: About to perform assignment..." << std::endl;
+            config_.abcd.x_axis.high_cuts = high_cuts_ref;
             std::cout << "DEBUG: Successfully assigned x_axis.x_high.cuts" << std::endl;
             
             // Parse y_axis  
