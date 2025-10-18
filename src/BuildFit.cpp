@@ -201,6 +201,16 @@ void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::stri
 }
 
 void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string datacard_dir, const AnalysisConfig& config) {
+    // Set data keys from config
+    if (!config.data.empty()) {
+        datakeys = config.data;
+        std::cout << "Using data samples from config: ";
+        for (const auto& data : datakeys) {
+            std::cout << data << " ";
+        }
+        std::cout << std::endl;
+    }
+    
     // Validate ABCD configuration
     if (!config.abcd.IsValid()) {
         std::cerr << "ABCD configuration validation failed:" << std::endl;
