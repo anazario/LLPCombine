@@ -21,6 +21,25 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 
 
+def format_variable_name(var_name):
+    """Format variable names to LaTeX notation"""
+    if not var_name:
+        return "Unknown"
+    
+    # Convert to LaTeX format
+    if var_name.lower() == 'sxy':
+        return "$S_{xy}$"
+    elif var_name.lower() == 'rs':
+        return "$R_S$"
+    elif var_name.lower() == 'ms':
+        return "$M_S$"
+    elif var_name.lower() == 'ntype':
+        return "$N_{\\mathrm{type}}^{\\mathrm{SV}}$"
+    else:
+        # Generic formatting - capitalize and add LaTeX math mode
+        return f"${var_name}$"
+
+
 def extract_variables_from_cuts(region_cuts, axis_info=None):
     """Extract X and Y variables from region cuts or axis info"""
     if not region_cuts:
@@ -158,7 +177,7 @@ def format_scale_factors(scale_factors, predicted_region):
             formatted.append(f"{sf['value']:.3f} $\\pm$ {sf['error']:.3f}")
     return " / ".join(formatted)
 
-def generate_comprehensive_table(grouped_results, output_file):
+def generate_comprehensive_table(grouped_results, output_file, performance_ranking):
     """Generate comprehensive table with all results"""
     
     latex_content = r"""
@@ -199,17 +218,20 @@ Config & Observed & Predicted & Scale Factors & Ratio & Pull \\
 
 """
     
-    # Process each numbered group
-    sorted_groups = sorted(grouped_results.keys())
+    # Sort groups by performance ranking (best first)
+    sorted_groups = sorted(grouped_results.keys(), 
+                          key=lambda group_num: performance_ranking[group_num])
+    
     for i, group_num in enumerate(sorted_groups):
         group_data = grouped_results[group_num]
+        performance_rank = performance_ranking[group_num]
         
         for item in group_data['results']:
             result = item['result']
             predicted_region = item['predicted_region']
             
-            # Configuration label
-            config_label = f"{group_num}{predicted_region}"
+            # Configuration label (use performance rank instead of original group number)
+            config_label = f"{performance_rank}{predicted_region}"
             
             # Extract metrics
             observed = result['yields']['predicted_true']
@@ -249,12 +271,13 @@ Pull: $(Predicted - Observed)/\sigma_{\mathrm{stat}}$ (ideal = 0)
     with open(output_file, 'w') as f:
         f.write(latex_content)
 
-def generate_group_tables(grouped_results, output_dir):
+def generate_group_tables(grouped_results, output_dir, performance_ranking):
     """Generate separate tables for each ABCD group"""
     
     for group_num, group_data in grouped_results.items():
+        performance_rank = performance_ranking[group_num]
         base_name = group_data['base_name']
-        output_file = os.path.join(output_dir, f"abcd_closure_group_{group_num}.tex")
+        output_file = os.path.join(output_dir, f"abcd_closure_group_{performance_rank}.tex")
         
         latex_content = f"""
 \\documentclass[10pt]{{article}}
@@ -272,7 +295,7 @@ def generate_group_tables(grouped_results, output_dir):
 
 \\begin{{document}}
 \\begin{{center}}
-{{\\Large \\bf ABCD Closure Test Results - Configuration {group_num}}}
+{{\\Large \\bf ABCD Closure Test Results - Configuration {performance_rank}}}
 \\end{{center}}
 
 \\begin{{table}}[htbp]
@@ -288,8 +311,8 @@ Config & Observed & Predicted & Scale Factors & Ratio & Pull \\\\
             result = item['result']
             predicted_region = item['predicted_region']
             
-            # Configuration label
-            config_label = f"{group_num}{predicted_region}"
+            # Configuration label (use performance rank instead of original group number)
+            config_label = f"{performance_rank}{predicted_region}"
             
             # Extract metrics
             observed = result['yields']['predicted_true']
@@ -330,7 +353,7 @@ Pull: $(Predicted - Observed)/\\sigma_{{\\mathrm{{stat}}}}$ (ideal = 0)
         with open(output_file, 'w') as f:
             f.write(latex_content)
 
-def generate_config_definitions_table(grouped_results, output_file):
+def generate_config_definitions_table(grouped_results, output_file, performance_ranking):
     """Generate supplementary table with configuration definitions"""
     
     latex_content = r"""
@@ -353,15 +376,19 @@ Config & Description \\
 \midrule
 """
     
-    # Process each numbered group
-    for group_num in sorted(grouped_results.keys()):
+    # Process each numbered group in performance order
+    sorted_groups = sorted(grouped_results.keys(), 
+                          key=lambda group_num: performance_ranking[group_num])
+    
+    for group_num in sorted_groups:
+        performance_rank = performance_ranking[group_num]
         group_data = grouped_results[group_num]
         base_name = group_data['base_name']
         
         # Clean up the base name for display
         display_name = base_name.replace('_', ' ').replace('gogoZ 1500 500 100 10 ', '')
         
-        latex_content += f"{group_num} & {display_name} \\\\\n"
+        latex_content += f"{performance_rank} & {display_name} \\\\\n"
     
     latex_content += r"""
 \bottomrule
@@ -377,6 +404,27 @@ like 1A, 1B, 1C, 1D for configuration 1.}
     
     with open(output_file, 'w') as f:
         f.write(latex_content)
+
+def try_extract_ms_ranges(regions, region_cuts):
+    """Helper function to extract Ms ranges from regions"""
+    ms_ranges = set()
+    for region in regions:
+        cuts = region_cuts.get(region, [])
+        ms_values = []
+        for cut in cuts:
+            ms_match = re.search(r'rjr_Ms\[1\]\s*([><])\s*(\d+\.?\d*)', cut)
+            if ms_match:
+                ms_values.append(float(ms_match.group(2)))
+        
+        if len(ms_values) >= 2:
+            ms_range = f"[{int(min(ms_values))},{int(max(ms_values))}]"
+            ms_ranges.add(ms_range)
+    
+    if len(ms_ranges) >= 2:
+        return "$M_S$", sorted(list(ms_ranges))
+    else:
+        return "Unknown", []
+
 
 def extract_variable_ranges_from_cuts(region_cuts, axis_info=None):
     """Extract the x and y variable ranges from ABCD cuts"""
@@ -507,27 +555,27 @@ def extract_variable_ranges_from_cuts(region_cuts, axis_info=None):
             if bounds['min'] is not None and bounds['max'] is not None:
                 # Both upper and lower bounds - create range
                 if var == 'Ms':
-                    common_parts.append(f"$M_S \\in [{bounds['min']:.0f},{bounds['max']:.0f}]$")
+                    common_parts.append(f"$M_S \\in [{int(bounds['min'])},{int(bounds['max'])}]$")
                 elif var == 'Sxy':
-                    common_parts.append(f"$S_{{xy}} \\in [{bounds['min']:.0f},{bounds['max']:.0f}]$")
+                    common_parts.append(f"$S_{{xy}} \\in [{int(bounds['min'])},{int(bounds['max'])}]$")
                 elif var == 'Rs':
-                    common_parts.append(f"$R_S \\in [{bounds['min']:.1f},{bounds['max']:.1f}]$")
+                    common_parts.append(f"$R_S \\in [{bounds['min']},{bounds['max']}]$")
             elif bounds['min'] is not None:
                 # Only lower bound
                 if var == 'Ms':
-                    common_parts.append(f"$M_S > {bounds['min']:.0f}$")
+                    common_parts.append(f"$M_S > {int(bounds['min'])}$")
                 elif var == 'Sxy':
-                    common_parts.append(f"$S_{{xy}} > {bounds['min']:.0f}$")
+                    common_parts.append(f"$S_{{xy}} > {int(bounds['min'])}$")
                 elif var == 'Rs':
-                    common_parts.append(f"$R_S > {bounds['min']:.1f}$")
+                    common_parts.append(f"$R_S > {bounds['min']}$")
             elif bounds['max'] is not None:
                 # Only upper bound
                 if var == 'Ms':
-                    common_parts.append(f"$M_S < {bounds['max']:.0f}$")
+                    common_parts.append(f"$M_S < {int(bounds['max'])}$")
                 elif var == 'Sxy':
-                    common_parts.append(f"$S_{{xy}} < {bounds['max']:.0f}$")
+                    common_parts.append(f"$S_{{xy}} < {int(bounds['max'])}$")
                 elif var == 'Rs':
-                    common_parts.append(f"$R_S < {bounds['max']:.1f}$")
+                    common_parts.append(f"$R_S < {bounds['max']}$")
     
     # Use \parbox to create multi-line content within the cell
     if len(common_parts) > 1:
@@ -537,58 +585,98 @@ def extract_variable_ranges_from_cuts(region_cuts, axis_info=None):
     
     # Determine x and y variable descriptions
     if len(x_categories) > 1:
-        x_var = "$N_{type}^{SV}$"
+        x_var = "$N_{\\mathrm{type}}^{\\mathrm{SV}}$"
         x_vals = ["$N_{lep}^{SV}=1$", "$N_{had}^{SV}=1$"]
     else:
-        # Check if it's a Sxy vs Rs grid (configs 2-4)
-        # Extract Sxy ranges from regions
-        sxy_ranges = set()
-        for region in regions:
-            cuts = region_cuts.get(region, [])
-            sxy_values = []
-            for cut in cuts:
-                sxy_match = re.search(r'(Leptonic|Hadronic)SV_dxySig\[0\]\s*([><])\s*(\d+\.?\d*)', cut)
-                if sxy_match:
-                    sxy_values.append(float(sxy_match.group(3)))
-            
-            if len(sxy_values) >= 2:
-                sxy_range = f"[{min(sxy_values):.0f},{max(sxy_values):.0f}]"
-                sxy_ranges.add(sxy_range)
+        # Check if Sxy is already captured in common cuts
+        sxy_in_common = any('S_{xy}' in str(part) or 'S_{{xy}}' in str(part) for part in common_parts)
         
-        if len(sxy_ranges) >= 2:
-            x_var = "$S_{xy}$"
-            x_vals = sorted(list(sxy_ranges))
-        else:
-            # Check if it's a Ms vs Rs grid (config 4)
-            # Extract Ms ranges from regions
-            ms_ranges = set()
+        
+        if not sxy_in_common:
+            # Check if it's a Sxy vs Rs grid (configs 2-4)
+            # Extract Sxy ranges from regions only if not in common cuts
+            sxy_ranges = set()
             for region in regions:
                 cuts = region_cuts.get(region, [])
-                ms_values = []
+                sxy_values = []
                 for cut in cuts:
-                    ms_match = re.search(r'rjr_Ms\[1\]\s*([><])\s*(\d+\.?\d*)', cut)
-                    if ms_match:
-                        ms_values.append(float(ms_match.group(2)))
+                    sxy_match = re.search(r'(Leptonic|Hadronic)SV_dxySig\[0\]\s*([><])\s*(\d+\.?\d*)', cut)
+                    if sxy_match:
+                        sxy_values.append(float(sxy_match.group(3)))
                 
-                if len(ms_values) >= 2:
-                    ms_range = f"[{min(ms_values):.0f},{max(ms_values):.0f}]"
-                    ms_ranges.add(ms_range)
+                if len(sxy_values) >= 2:
+                    sxy_range = f"[{int(min(sxy_values))},{int(max(sxy_values))}]"
+                    sxy_ranges.add(sxy_range)
             
-            if len(ms_ranges) >= 2:
-                x_var = "$M_S$"
-                x_vals = sorted(list(ms_ranges))
+            if len(sxy_ranges) >= 2:
+                x_var = "$S_{xy}$"
+                x_vals = sorted(list(sxy_ranges))
             else:
-                x_var = "Unknown"
-                x_vals = []
+                # Try Ms ranges if Sxy didn't work
+                x_var, x_vals = try_extract_ms_ranges(regions, region_cuts)
+        else:
+            # Sxy is in common cuts, try Ms ranges
+            x_var, x_vals = try_extract_ms_ranges(regions, region_cuts)
+        
+        # If we still don't have valid ranges, fallback to unknown
+        if not x_vals or len(x_vals) < 2:
+            x_var = "Unknown"
+            x_vals = []
     
     # Use axis_info if available for variable names (new explicit format)
     if axis_info and 'x_axis' in axis_info and 'y_axis' in axis_info:
         x_var_name = format_variable_name(axis_info['x_axis']['name'])
         y_var_name = format_variable_name(axis_info['y_axis']['name'])
         
-        # For explicit format, create descriptive ranges from axis info
-        x_vals = [axis_info['x_axis'].get('low_desc', 'low'), axis_info['x_axis'].get('high_desc', 'high')]
-        y_vals = [axis_info['y_axis'].get('low_desc', 'low'), axis_info['y_axis'].get('high_desc', 'high')]
+        # For explicit format, create descriptive ranges from axis info and format them
+        def format_range_description(desc):
+            if not desc or desc in ['low', 'high']:
+                return desc
+            # Replace raw variable names with LaTeX formatted versions
+            desc = re.sub(r'\bSxy\b', r'$S_{xy}$', desc)
+            desc = re.sub(r'\bMs\b', r'$M_S$', desc)  
+            desc = re.sub(r'\bRs\b', r'$R_S$', desc)
+            # Replace nLep and nHad with proper LaTeX notation
+            desc = re.sub(r'\bnLep=1\b', r'$N_{\\mathrm{lep}}^{\\mathrm{SV}} = 1$', desc)
+            desc = re.sub(r'\bnHad=1\b', r'$N_{\\mathrm{had}}^{\\mathrm{SV}} = 1$', desc)
+            # Remove .0 from integer values in ranges like [100.0,300.0] -> [100,300]
+            desc = re.sub(r'(\d+)\.0\b', r'\1', desc)
+            return desc
+        
+        def remove_common_ranges_from_desc(desc):
+            """Remove range specifications that are already in common cuts"""
+            if not desc:
+                return desc
+            # Remove Sxy ranges if Sxy is in common cuts
+            if any('S_{xy}' in str(part) or 'S_{{xy}}' in str(part) for part in common_parts):
+                desc = re.sub(r',\s*Sxy\[[^\]]+\]', '', desc)
+                desc = re.sub(r'Sxy\[[^\]]+\],\s*', '', desc)
+                desc = re.sub(r'Sxy\[[^\]]+\]', '', desc)
+            # Remove Rs ranges if Rs is in common cuts  
+            if any('$R_S$' in str(part) for part in common_parts):
+                desc = re.sub(r',\s*Rs\[[^\]]+\]', '', desc)
+                desc = re.sub(r'Rs\[[^\]]+\],\s*', '', desc)
+                desc = re.sub(r'Rs\[[^\]]+\]', '', desc)
+            # Remove Ms ranges if Ms is in common cuts
+            if any('$M_S$' in str(part) for part in common_parts):
+                desc = re.sub(r',\s*Ms\[[^\]]+\]', '', desc)
+                desc = re.sub(r'Ms\[[^\]]+\],\s*', '', desc)
+                desc = re.sub(r'Ms\[[^\]]+\]', '', desc)
+            # Clean up any remaining extra commas or spaces
+            desc = re.sub(r',\s*,', ',', desc)
+            desc = re.sub(r'^,\s*', '', desc)
+            desc = re.sub(r',\s*$', '', desc)
+            return desc.strip()
+        
+        raw_x_low = axis_info['x_axis'].get('low_desc', 'low')
+        raw_x_high = axis_info['x_axis'].get('high_desc', 'high') 
+        raw_y_low = axis_info['y_axis'].get('low_desc', 'low')
+        raw_y_high = axis_info['y_axis'].get('high_desc', 'high')
+        
+        x_vals = [format_range_description(remove_common_ranges_from_desc(raw_x_low)), 
+                  format_range_description(remove_common_ranges_from_desc(raw_x_high))]
+        y_vals = [format_range_description(remove_common_ranges_from_desc(raw_y_low)), 
+                  format_range_description(remove_common_ranges_from_desc(raw_y_high))]
         
         # Filter out empty descriptions
         x_vals = [x for x in x_vals if x and x != '']
@@ -597,12 +685,20 @@ def extract_variable_ranges_from_cuts(region_cuts, axis_info=None):
         return common_cuts_str, f"{y_var_name} vs {x_var_name}", x_vals, y_vals, common_parts
     
     # Fallback to old hardcoded logic
-    y_var = "$R_S$" 
-    y_vals = sorted(list(y_ranges))
+    # Check if Rs is already captured in common cuts
+    rs_in_common = any('$R_S$' in str(part) for part in common_parts)
+    
+    if rs_in_common:
+        # Rs is in common cuts, don't show separate y ranges
+        y_var = "$R_S$"
+        y_vals = []
+    else:
+        y_var = "$R_S$" 
+        y_vals = sorted(list(y_ranges))
     
     return common_cuts_str, f"{y_var} vs {x_var}", x_vals, y_vals, common_parts
 
-def generate_cuts_table(grouped_results, output_file):
+def generate_cuts_table(grouped_results, output_file, performance_ranking):
     """Generate clean ABCD cuts table showing the grid structure"""
     
     latex_content = r"""
@@ -618,7 +714,7 @@ def generate_cuts_table(grouped_results, output_file):
 {\Large \bf ABCD Region Cut Definitions}
 \end{center}
 
-\begin{longtable}{c>{\centering\arraybackslash}p{4cm}c>{\centering\arraybackslash}p{2.2cm}>{\centering\arraybackslash}p{2.2cm}>{\centering\arraybackslash}p{2.2cm}>{\centering\arraybackslash}p{2.2cm}}
+\begin{longtable}{c>{\centering\arraybackslash}p{4cm}c>{\centering\arraybackslash}p{2.8cm}>{\centering\arraybackslash}p{2.8cm}>{\centering\arraybackslash}p{2.8cm}>{\centering\arraybackslash}p{2.8cm}}
 \toprule
 Config & Common Cuts & Variables & $x_{\mathrm{low}}$ & $x_{\mathrm{high}}$ & $y_{\mathrm{low}}$ & $y_{\mathrm{high}}$ \\
 \midrule
@@ -634,9 +730,12 @@ Config & Common Cuts & Variables & $x_{\mathrm{low}}$ & $x_{\mathrm{high}}$ & $y
 
 """
     
-    # Process each numbered group
-    sorted_groups = sorted(grouped_results.keys())
+    # Process each numbered group in performance order
+    sorted_groups = sorted(grouped_results.keys(), 
+                          key=lambda group_num: performance_ranking[group_num])
+    
     for i, group_num in enumerate(sorted_groups):
+        performance_rank = performance_ranking[group_num]
         group_data = grouped_results[group_num]
         
         # Get the first result to extract cuts
@@ -662,11 +761,11 @@ Config & Common Cuts & Variables & $x_{\mathrm{low}}$ & $x_{\mathrm{high}}$ & $y
             if i < len(sorted_groups) - 1:
                 # More spacing after multi-line rows (parbox), normal spacing after single-line rows
                 if len(common_parts) > 1:
-                    latex_content += f"{group_num} & {common_cuts} & {variables} & {x_low} & {x_high} & {y_low} & {y_high} \\\\[1.5em]\n"
+                    latex_content += f"{performance_rank} & {common_cuts} & {variables} & {x_low} & {x_high} & {y_low} & {y_high} \\\\[1.5em]\n"
                 else:
-                    latex_content += f"{group_num} & {common_cuts} & {variables} & {x_low} & {x_high} & {y_low} & {y_high} \\\\[0.8em]\n"
+                    latex_content += f"{performance_rank} & {common_cuts} & {variables} & {x_low} & {x_high} & {y_low} & {y_high} \\\\[0.8em]\n"
             else:
-                latex_content += f"{group_num} & {common_cuts} & {variables} & {x_low} & {x_high} & {y_low} & {y_high} \\\\\n"
+                latex_content += f"{performance_rank} & {common_cuts} & {variables} & {x_low} & {x_high} & {y_low} & {y_high} \\\\\n"
     
     latex_content += r"""
 
@@ -769,23 +868,37 @@ def main():
     # Organize results into numbered groups
     print("Organizing results into ABCD groups...")
     grouped_results = organize_results_by_groups(results)
+    
+    # Create performance ranking (1 = best, n = worst)
+    def calculate_average_pull(group_data):
+        pulls = []
+        for item in group_data['results']:
+            result = item['result']
+            pull = result['closure_metrics']['pull']
+            pulls.append(abs(pull))  # Use absolute value for sorting
+        return sum(pulls) / len(pulls) if pulls else float('inf')
+    
+    # Create mapping from original group number to performance rank
+    sorted_groups = sorted(grouped_results.keys(), 
+                          key=lambda group_num: calculate_average_pull(grouped_results[group_num]))
+    performance_ranking = {group_num: i + 1 for i, group_num in enumerate(sorted_groups)}
     print(f"Created {len(grouped_results)} configuration groups")
     
     # Generate tables
     print("Generating comprehensive table...")
     comprehensive_tex = os.path.join(args.output_dir, "abcd_closure_comprehensive.tex")
-    generate_comprehensive_table(grouped_results, comprehensive_tex)
+    generate_comprehensive_table(grouped_results, comprehensive_tex, performance_ranking)
     
     print("Generating group-specific tables...")
-    generate_group_tables(grouped_results, args.output_dir)
+    generate_group_tables(grouped_results, args.output_dir, performance_ranking)
     
     print("Generating configuration definitions table...")
     config_def_tex = os.path.join(args.output_dir, "abcd_config_definitions.tex")
-    generate_config_definitions_table(grouped_results, config_def_tex)
+    generate_config_definitions_table(grouped_results, config_def_tex, performance_ranking)
     
     print("Generating cuts definition table...")
     cuts_tex = os.path.join(args.output_dir, "abcd_region_cuts.tex")
-    generate_cuts_table(grouped_results, cuts_tex)
+    generate_cuts_table(grouped_results, cuts_tex, performance_ranking)
     
     # Compile to PDF if requested
     if not args.no_compile:
