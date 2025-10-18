@@ -88,19 +88,29 @@ std::vector<std::string> BuildFit::GetBinSet( JSONFactory* j){
 std::vector<std::string> BuildFit::GetDataProcs(JSONFactory* j){
 	
 	std::vector<std::string> bkgprocs{};
+	std::cout << "DEBUG: GetDataProcs called" << std::endl;
+	std::cout << "DEBUG: datakeys size: " << datakeys.size() << std::endl;
+	for (size_t i = 0; i < datakeys.size(); i++) {
+		std::cout << "DEBUG: datakeys[" << i << "] = '" << datakeys[i] << "'" << std::endl;
+	}
+	
 	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
                 //inner loop process iterator
                 std::string binname = it.key();
+                std::cout << "DEBUG: Processing bin: " << binname << std::endl;
                 for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
-                //      std::cout<< it2.key()<<"\n";
-                        if(  BFTool::ContainsAnySubstring(it2.key(),datakeys) ){
-                                bkgprocs.push_back(it2.key());
+                        std::string process_key = it2.key();
+                        std::cout << "DEBUG: Checking process: '" << process_key << "'" << std::endl;
+                        if(  BFTool::ContainsAnySubstring(process_key, datakeys) ){
+                                std::cout << "DEBUG: Found data process: " << process_key << std::endl;
+                                bkgprocs.push_back(process_key);
                         }
                 }
         }//make this set unique
         std::set<std::string> my_bkg_set(bkgprocs.begin(), bkgprocs.end());
         std::vector<std::string> bkgprocsunique(my_bkg_set.begin(), my_bkg_set.end());
 
+	std::cout << "DEBUG: Found " << bkgprocsunique.size() << " unique data processes" << std::endl;
 	return bkgprocsunique;	
 
 }
