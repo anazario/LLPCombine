@@ -355,15 +355,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             config_.abcd.x_axis.low_cuts = parser.lists["x_axis.x_low.cuts"];
             std::cout << "DEBUG: Successfully assigned x_axis.x_low.cuts" << std::endl;
             
-            std::cout << "DEBUG: About to assign x_axis.x_high.cuts" << std::endl;
-            const auto& high_cuts_ref = parser.lists["x_axis.x_high.cuts"];
-            std::cout << "DEBUG: high_cuts_ref size: " << high_cuts_ref.size() << std::endl;
-            for (size_t i = 0; i < high_cuts_ref.size(); ++i) {
-                std::cout << "DEBUG: high_cuts[" << i << "] = '" << high_cuts_ref[i] << "'" << std::endl;
-            }
-            std::cout << "DEBUG: About to perform assignment..." << std::endl;
-            config_.abcd.x_axis.high_cuts = high_cuts_ref;
-            std::cout << "DEBUG: Successfully assigned x_axis.x_high.cuts" << std::endl;
+            config_.abcd.x_axis.high_cuts = parser.lists.at("x_axis.x_high.cuts");
             
             // Parse y_axis  
             config_.abcd.y_axis.name = parser.values["y_axis.name"];
@@ -432,13 +424,8 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     if (parser.lists.count("samples.signals")) {
         config_.signals = parser.lists["samples.signals"];
     }
-    std::cout << "DEBUG: About to parse samples.data" << std::endl;
     if (parser.lists.count("samples.data")) {
-        std::cout << "DEBUG: Found samples.data key, size: " << parser.lists["samples.data"].size() << std::endl;
-        config_.data = parser.lists["samples.data"];
-        std::cout << "DEBUG: Successfully assigned samples.data" << std::endl;
-    } else {
-        std::cout << "DEBUG: No samples.data key found" << std::endl;
+        config_.data = parser.lists.at("samples.data");
     }
     
     if (parser.lists.count("samples.signal_points")) {
