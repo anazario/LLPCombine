@@ -408,9 +408,6 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     if (parser.lists.count("samples.signals")) {
         config_.signals = parser.lists["samples.signals"];
     }
-    if (parser.lists.count("samples.data")) {
-        config_.data = parser.lists.at("samples.data");
-    }
     
     if (parser.lists.count("samples.signal_points")) {
         config_.signal_points = parser.lists["samples.signal_points"];
