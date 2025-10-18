@@ -88,10 +88,15 @@ std::vector<std::string> BuildFit::GetBinSet( JSONFactory* j){
 std::vector<std::string> BuildFit::GetDataProcs(JSONFactory* j){
 	
 	std::vector<std::string> bkgprocs{};
+	
+	// Fix corrupted datakeys by using local initialization
+	std::vector<std::string> safe_datakeys = { "MET18", "DisplacedJet18"};
+	
 	std::cout << "DEBUG: GetDataProcs called" << std::endl;
-	std::cout << "DEBUG: datakeys size: " << datakeys.size() << std::endl;
-	for (size_t i = 0; i < datakeys.size(); i++) {
-		std::cout << "DEBUG: datakeys[" << i << "] = '" << datakeys[i] << "'" << std::endl;
+	std::cout << "DEBUG: Original datakeys size: " << datakeys.size() << std::endl;
+	std::cout << "DEBUG: Safe datakeys size: " << safe_datakeys.size() << std::endl;
+	for (size_t i = 0; i < safe_datakeys.size(); i++) {
+		std::cout << "DEBUG: safe_datakeys[" << i << "] = '" << safe_datakeys[i] << "'" << std::endl;
 	}
 	
 	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
@@ -101,7 +106,7 @@ std::vector<std::string> BuildFit::GetDataProcs(JSONFactory* j){
                 for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
                         std::string process_key = it2.key();
                         std::cout << "DEBUG: Checking process: '" << process_key << "'" << std::endl;
-                        if(  BFTool::ContainsAnySubstring(process_key, datakeys) ){
+                        if(  BFTool::ContainsAnySubstring(process_key, safe_datakeys) ){
                                 std::cout << "DEBUG: Found data process: " << process_key << std::endl;
                                 bkgprocs.push_back(process_key);
                         }
