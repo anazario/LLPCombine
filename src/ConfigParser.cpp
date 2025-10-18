@@ -854,153 +854,94 @@ void ConfigParser::CreateSystematicsFromNames(const SimpleYAMLParser& parser, co
 }
 
 void ConfigParser::GenerateABCDBinsFromAxes() {
-    // Generate ABCD bins dynamically from x_axis and y_axis definitions
-    // A = [x_low, y_high], B = [x_high, y_high], C = [x_low, y_low], D = [x_high, y_low]
-    
     if (!config_.abcd.use_explicit_format) {
         return;
     }
-    
-    // Helper function to filter cuts for specific SV type
+
+    // Helper: filter cuts for a given SV type
     auto filterCutsForSV = [](const std::vector<std::string>& cuts, const std::string& sv_type) {
-        std::vector<std::string> filtered_cuts;
-        for (const std::string& cut : cuts) {
-            // Check if this is an SV-specific cut
-            if (cut.find("LeptonicSV_") == 0 && sv_type == "nLeptonic") {
-                filtered_cuts.push_back(cut);
-            } else if (cut.find("HadronicSV_") == 0 && sv_type == "nHadronic") {
-                filtered_cuts.push_back(cut);
-            } else if (cut.find("SV_") == 0 || cut.find("rjr_") == 0) {
-                // Non-SV-specific cuts (like SV_nLeptonic, rjr_Ms, etc.) - include always
-                filtered_cuts.push_back(cut);
+        std::vector<std::string> filtered;
+        for (const auto& cut : cuts) {
+            if ((cut.find("LeptonicSV_") == 0 && sv_type == "nLeptonic") ||
+                (cut.find("HadronicSV_") == 0 && sv_type == "nHadronic") ||
+                (cut.find("SV_") == 0) || (cut.find("rjr_") == 0)) {
+                filtered.push_back(cut);
             }
         }
-        return filtered_cuts;
+        return filtered;
     };
-    
-    // Generate bin names based on axis names
-    std::string bin_prefix = config_.abcd.x_axis.name + "_" + config_.abcd.y_axis.name + "_";
-    
-    // Create regions mapping
-    config_.abcd.regions["region_A"] = bin_prefix + "A";
-    config_.abcd.regions["region_B"] = bin_prefix + "B"; 
-    config_.abcd.regions["region_C"] = bin_prefix + "C";
-    config_.abcd.regions["region_D"] = bin_prefix + "D";
-    
-    // Determine SV types from x_axis cuts
-    std::string sv_type_low = "", sv_type_high = "";
-    for (const std::string& cut : config_.abcd.x_axis.low_cuts) {
-        if (cut.find("SV_nLeptonic") != std::string::npos) sv_type_low = "nLeptonic";
-        else if (cut.find("SV_nHadronic") != std::string::npos) sv_type_low = "nHadronic";
-    }
-    for (const std::string& cut : config_.abcd.x_axis.high_cuts) {
-        if (cut.find("SV_nLeptonic") != std::string::npos) sv_type_high = "nLeptonic";
-        else if (cut.find("SV_nHadronic") != std::string::npos) sv_type_high = "nHadronic";
-    }
-    
-    // Generate Region A: [x_low, y_high]
-    BinConfig bin_a;
-    bin_a.name = bin_prefix + "A";
-    std::string low_desc = config_.abcd.x_axis.low_desc.empty() ? config_.abcd.x_axis.name + "_low" : config_.abcd.x_axis.low_desc;
-    std::string high_desc = config_.abcd.y_axis.high_desc.empty() ? config_.abcd.y_axis.name + "_high" : config_.abcd.y_axis.high_desc;
-    bin_a.description = low_desc + ", " + high_desc;
-    
-    // Add common cuts
-    bin_a.cuts.insert(bin_a.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
-    
-    // Add x_low cuts
-    bin_a.cuts.insert(bin_a.cuts.end(), config_.abcd.x_axis.low_cuts.begin(), config_.abcd.x_axis.low_cuts.end());
-    
-    // Add y_high cuts, filtered for the appropriate SV type
-    auto y_high_filtered = filterCutsForSV(config_.abcd.y_axis.high_cuts, sv_type_low);
-    bin_a.cuts.insert(bin_a.cuts.end(), y_high_filtered.begin(), y_high_filtered.end());
-    
-    config_.bins.push_back(bin_a);
-    
-    // Generate Region B: [x_high, y_high]
-    BinConfig bin_b;
-    bin_b.name = bin_prefix + "B";
-    std::string x_high_desc = config_.abcd.x_axis.high_desc.empty() ? config_.abcd.x_axis.name + "_high" : config_.abcd.x_axis.high_desc;
-    std::string y_high_desc = config_.abcd.y_axis.high_desc.empty() ? config_.abcd.y_axis.name + "_high" : config_.abcd.y_axis.high_desc;
-    bin_b.description = x_high_desc + ", " + y_high_desc;
-    
-    // Add common cuts
-    bin_b.cuts.insert(bin_b.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
-    
-    // Add x_high cuts
-    bin_b.cuts.insert(bin_b.cuts.end(), config_.abcd.x_axis.high_cuts.begin(), config_.abcd.x_axis.high_cuts.end());
-    
-    // Add y_high cuts, filtered for the appropriate SV type
-    y_high_filtered = filterCutsForSV(config_.abcd.y_axis.high_cuts, sv_type_high);
-    bin_b.cuts.insert(bin_b.cuts.end(), y_high_filtered.begin(), y_high_filtered.end());
-    
-    config_.bins.push_back(bin_b);
-    
-    // Generate Region C: [x_low, y_low]
-    BinConfig bin_c;
-    bin_c.name = bin_prefix + "C";
-    std::string x_low_desc = config_.abcd.x_axis.low_desc.empty() ? config_.abcd.x_axis.name + "_low" : config_.abcd.x_axis.low_desc;
-    std::string y_low_desc = config_.abcd.y_axis.low_desc.empty() ? config_.abcd.y_axis.name + "_low" : config_.abcd.y_axis.low_desc;
-    bin_c.description = x_low_desc + ", " + y_low_desc;
-    
-    // Add common cuts
-    bin_c.cuts.insert(bin_c.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
-    
-    // Add x_low cuts
-    bin_c.cuts.insert(bin_c.cuts.end(), config_.abcd.x_axis.low_cuts.begin(), config_.abcd.x_axis.low_cuts.end());
-    
-    // Add y_low cuts, filtered for the appropriate SV type
-    auto y_low_filtered = filterCutsForSV(config_.abcd.y_axis.low_cuts, sv_type_low);
-    bin_c.cuts.insert(bin_c.cuts.end(), y_low_filtered.begin(), y_low_filtered.end());
-    
-    config_.bins.push_back(bin_c);
-    
-    // Generate Region D: [x_high, y_low]
-    BinConfig bin_d;
-    bin_d.name = bin_prefix + "D";
-    std::string x_high_desc_d = config_.abcd.x_axis.high_desc.empty() ? config_.abcd.x_axis.name + "_high" : config_.abcd.x_axis.high_desc;
-    std::string y_low_desc_d = config_.abcd.y_axis.low_desc.empty() ? config_.abcd.y_axis.name + "_low" : config_.abcd.y_axis.low_desc;
-    bin_d.description = x_high_desc_d + ", " + y_low_desc_d;
-    
-    // Add common cuts
-    bin_d.cuts.insert(bin_d.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
-    
-    // Add x_high cuts
-    bin_d.cuts.insert(bin_d.cuts.end(), config_.abcd.x_axis.high_cuts.begin(), config_.abcd.x_axis.high_cuts.end());
-    
-    // Add y_low cuts, filtered for the appropriate SV type
-    y_low_filtered = filterCutsForSV(config_.abcd.y_axis.low_cuts, sv_type_high);
-    bin_d.cuts.insert(bin_d.cuts.end(), y_low_filtered.begin(), y_low_filtered.end());
-    
-    config_.bins.push_back(bin_d);
-    
-    // Show generated ABCD regions
-    std::cout << "\n=== Generated ABCD Regions ===" << std::endl;
-    std::cout << "X-axis: " << config_.abcd.x_axis.name << std::endl;
-    std::cout << "Y-axis: " << config_.abcd.y_axis.name << std::endl;
-    std::cout << "------------------------------------" << std::endl;
 
-    for (const auto& region : config_.abcd.regions) {
-      const std::string& region_key = region.first;
-      const std::string& bin_name = region.second;
+    // Determine SV types from x_axis
+    auto getSVType = [](const std::vector<std::string>& cuts) {
+        for (const auto& c : cuts) {
+            if (c.find("SV_nLeptonic") != std::string::npos) return std::string("nLeptonic");
+            if (c.find("SV_nHadronic") != std::string::npos) return std::string("nHadronic");
+        }
+        return std::string("");
+    };
 
-      auto it = std::find_if(config_.bins.begin(), config_.bins.end(),
-			     [&](const BinConfig& b) { return b.name == bin_name; });
+    std::string sv_type_low = getSVType(config_.abcd.x_axis.low_cuts);
+    std::string sv_type_high = getSVType(config_.abcd.x_axis.high_cuts);
 
-      if (it == config_.bins.end()) continue;
+    // Common prefix
+    std::string prefix = config_.abcd.x_axis.name + "_" + config_.abcd.y_axis.name + "_";
 
-      const auto& bin = *it;
+    // Region definitions: key → [x_cuts, y_cuts, sv_type_x, sv_type_y, suffix]
+    struct RegionSpec {
+        const std::vector<std::string>& xcuts;
+        const std::vector<std::string>& ycuts;
+        std::string sv_type;
+        std::string suffix;
+        std::string xdesc, ydesc;
+    };
 
-      std::cout << region_key << " (" << bin.name << "): "
-		<< bin.description << std::endl;
+    auto x_low_desc = config_.abcd.x_axis.low_desc.empty() ? config_.abcd.x_axis.name + "_low" : config_.abcd.x_axis.low_desc;
+    auto x_high_desc = config_.abcd.x_axis.high_desc.empty() ? config_.abcd.x_axis.name + "_high" : config_.abcd.x_axis.high_desc;
+    auto y_low_desc = config_.abcd.y_axis.low_desc.empty() ? config_.abcd.y_axis.name + "_low" : config_.abcd.y_axis.low_desc;
+    auto y_high_desc = config_.abcd.y_axis.high_desc.empty() ? config_.abcd.y_axis.name + "_high" : config_.abcd.y_axis.high_desc;
 
-      for (const std::string& cut : bin.cuts) {
-        std::cout << "   - " << cut << std::endl;
-      }
+    std::map<std::string, RegionSpec> regions = {
+        {"region_A", {config_.abcd.x_axis.low_cuts,  config_.abcd.y_axis.high_cuts, sv_type_low,  "A", x_low_desc,  y_high_desc}},
+        {"region_B", {config_.abcd.x_axis.high_cuts, config_.abcd.y_axis.high_cuts, sv_type_high, "B", x_high_desc, y_high_desc}},
+        {"region_C", {config_.abcd.x_axis.low_cuts,  config_.abcd.y_axis.low_cuts,  sv_type_low,  "C", x_low_desc,  y_low_desc}},
+        {"region_D", {config_.abcd.x_axis.high_cuts, config_.abcd.y_axis.low_cuts,  sv_type_high, "D", x_high_desc, y_low_desc}}
+    };
 
-      std::cout << "   Combined: " << GetCombinedCuts(bin.name) << std::endl;
-      std::cout << "------------------------------------" << std::endl;
+    // Build bins
+    for (const auto& [region_key, spec] : regions) {
+        BinConfig bin;
+        bin.name = prefix + spec.suffix;
+        bin.description = spec.xdesc + ", " + spec.ydesc;
+
+        // Combine cuts
+        bin.cuts.insert(bin.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
+        bin.cuts.insert(bin.cuts.end(), spec.xcuts.begin(), spec.xcuts.end());
+
+        auto y_filtered = filterCutsForSV(spec.ycuts, spec.sv_type);
+        bin.cuts.insert(bin.cuts.end(), y_filtered.begin(), y_filtered.end());
+
+        config_.bins.push_back(bin);
+        config_.abcd.regions[region_key] = bin.name;
     }
 
-    std::cout << "====================================" << std::endl;
+    // Display
+    std::cout << "\n=== Generated ABCD Regions ===\n";
+    std::cout << "X-axis: " << config_.abcd.x_axis.name << "\n";
+    std::cout << "Y-axis: " << config_.abcd.y_axis.name << "\n";
+    std::cout << "------------------------------------\n";
+
+    for (const auto& [region_key, bin_name] : config_.abcd.regions) {
+        auto it = std::find_if(config_.bins.begin(), config_.bins.end(),
+                               [&](const BinConfig& b) { return b.name == bin_name; });
+        if (it == config_.bins.end()) continue;
+
+        const auto& bin = *it;
+        std::cout << region_key << " (" << bin.name << "): " << bin.description << "\n";
+        for (const auto& cut : bin.cuts)
+            std::cout << "   - " << cut << "\n";
+        std::cout << "   Combined: " << GetCombinedCuts(bin.name) << "\n";
+        std::cout << "------------------------------------\n";
+    }
+
+    std::cout << "====================================\n";
 }
