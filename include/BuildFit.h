@@ -26,6 +26,10 @@ typedef std::map<std::string, std::vector<std::string> > channelmap;
 class BuildFit{
 	
 	public:
+	// Constructor to ensure proper initialization
+	BuildFit() : sigkeys({ "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" }),
+	            datakeys({ "MET18", "DisplacedJet18"}) {}
+	
 	ch::CombineHarvester cb{};
 	
 //	void BuildAsimovFit(JSONFactory* j);
