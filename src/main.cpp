@@ -78,9 +78,8 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	stringlist bkglist(config.backgrounds.begin(), config.backgrounds.end());
 	stringlist siglist(config.signals.begin(), config.signals.end());
 	
-	// Load data if specified in config (for now, use default 2018 data)
-	string year = "18";
-	stringlist datalist = {"DisplacedJet"+year};
+	// Load data from config  
+	stringlist datalist = config.data.empty() ? stringlist{} : config.data;
 	
 	ST->LoadBkgs(bkglist);
 	ST->LoadSigs(siglist);
