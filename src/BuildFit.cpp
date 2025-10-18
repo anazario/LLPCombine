@@ -16,6 +16,9 @@ std::map<std::string, float> BuildFit::BuildAsimovData(JSONFactory* j){
 
 	std::map<std::string, float> obs_rates{};
 	
+	// Fix corrupted member variables by using local initialization
+	std::vector<std::string> safe_sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
+	
 	//outer loop bin iterator
 	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
 		//inner loop process iterator
@@ -24,7 +27,7 @@ std::map<std::string, float> BuildFit::BuildAsimovData(JSONFactory* j){
 		for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
 			//std::cout<< it2.key()<<"\n";
 			
-			if( BFTool::ContainsAnySubstring( it2.key(), sigkeys)){
+			if( BFTool::ContainsAnySubstring( it2.key(), safe_sigkeys)){
 				continue;
 			}
 			else{
@@ -41,13 +44,17 @@ std::map<std::string, float> BuildFit::BuildAsimovData(JSONFactory* j){
 }
 std::vector<std::string> BuildFit::GetBkgProcs(JSONFactory* j){
 	std::vector<std::string> bkgprocs{};
+	
+	// Fix corrupted member variables by using local initialization
+	std::vector<std::string> safe_sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
+	std::vector<std::string> safe_datakeys = { "MET18", "DisplacedJet18"};
 
 	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
                 //inner loop process iterator
                 std::string binname = it.key();
                 for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
                 //      std::cout<< it2.key()<<"\n";
-                        if( BFTool::ContainsAnySubstring( it2.key(), sigkeys) || it2.key() == "data_obs" || BFTool::ContainsAnySubstring(it2.key(),datakeys)){
+                        if( BFTool::ContainsAnySubstring( it2.key(), safe_sigkeys) || it2.key() == "data_obs" || BFTool::ContainsAnySubstring(it2.key(), safe_datakeys)){
                                 continue;
                         }
                         else{
