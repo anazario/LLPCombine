@@ -111,7 +111,8 @@ SampleTool::SampleTool(){
 	//MasterDict["DisplacedJet18"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D-15Feb2022_UL2018-v1_v29_rjrskim_v37.root"};
 	//MasterDict["DisplacedJet17"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D-15Feb2022_UL2018-v1_v29_rjrskim_v37.root"};
 	MasterDict["DisplacedJet18"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D_rjrskim_v38.root"};
-
+	MasterDict["MET18"] = { pathPrefix+"MET_R18_SVIPM100_v31_MET_AOD_Run2018A_rjrskim_v39.root" };
+	
 }
 void SampleTool::LoadBkgs( stringlist& bkglist ){
 	for( long unsigned int i=0; i<bkglist.size(); i++){
