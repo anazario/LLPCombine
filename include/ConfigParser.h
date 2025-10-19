@@ -96,6 +96,7 @@ struct AnalysisConfig {
     
     std::vector<std::string> backgrounds;
     std::vector<std::string> signals;
+    std::vector<std::string> data;  // Data samples to use
     std::vector<std::string> signal_points;  // Optional: specific signal points to use
     
     std::vector<BinConfig> bins;

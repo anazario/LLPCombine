@@ -338,6 +338,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     // --- samples
     config_.backgrounds = GetListOrDefault(parser.lists, "samples.backgrounds");
     config_.signals = GetListOrDefault(parser.lists, "samples.signals");
+    config_.data = GetListOrDefault(parser.lists, "samples.data");
     config_.signal_points = GetListOrDefault(parser.lists, "samples.signal_points");
 
     // --- systematics (unified)
