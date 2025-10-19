@@ -77,13 +77,29 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
   // Convert vectors to the expected stringlist format
   stringlist bkglist(config.backgrounds.begin(), config.backgrounds.end());
   stringlist siglist(config.signals.begin(), config.signals.end());
-	
-  // Load data from config
   stringlist datalist(config.data.begin(), config.data.end());
-	
-  ST->LoadBkgs(bkglist);
-  ST->LoadSigs(siglist);
-  ST->LoadData(datalist);
+  
+  // Load samples based on data_as_background mode
+  if (config.data_as_background) {
+    if (verbosity > 0) {
+      std::cout << "Data-as-background mode: treating data samples as backgrounds" << std::endl;
+    }
+    // In data-as-background mode, add data samples to background list
+    for (const auto& data_sample : config.data) {
+      bkglist.push_back(data_sample);
+    }
+    ST->LoadBkgs(bkglist);
+    ST->LoadSigs(siglist);
+    // Don't load data as observations - will use Asimov or no observations
+  } else {
+    if (verbosity > 0) {
+      std::cout << "Standard mode: using data as observations" << std::endl;
+    }
+    // Standard mode: load data as observations
+    ST->LoadBkgs(bkglist);
+    ST->LoadSigs(siglist);
+    ST->LoadData(datalist);
+  }
 	
   // Filter signal points if specified in configuration
   if (!config.signal_points.empty()) {
@@ -175,7 +191,12 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	
   // Initialize BuildFitInput
   auto BFI = std::make_unique<BuildFitInput>();
-  BFI->LoadData_byMap(ST->DataDict, luminosity);
+  
+  // Load data conditionally based on mode
+  if (!config.data_as_background) {
+    BFI->LoadData_byMap(ST->DataDict, luminosity);
+  }
+  
   BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
   BFI->LoadSig_byMap(ST->SigDict, luminosity);
 	
@@ -196,12 +217,23 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
   // Book operations
   countmap countResults = BFI->CountRegions(BFI->bkg_filtered_dataframes);
   countmap countResults_S = BFI->CountRegions(BFI->sig_filtered_dataframes);
-  // Use data_filtered_dataframes for data observations
-  countmap countResults_obs = BFI->CountRegions(BFI->data_filtered_dataframes);
+  
+  // Handle data observations conditionally
+  countmap countResults_obs;
+  summap sumResults_obs;
+  
+  if (!config.data_as_background) {
+    // Standard mode: use data observations
+    countResults_obs = BFI->CountRegions(BFI->data_filtered_dataframes);
+    sumResults_obs = BFI->SumRegions("evtwt", BFI->data_filtered_dataframes);
+  } else {
+    // Data-as-background mode: use Asimov data (sum of backgrounds)
+    countResults_obs = countResults;  // Use background counts as observations
+    sumResults_obs = BFI->SumRegions("evtwt", BFI->bkg_filtered_dataframes);
+  }
 
   summap sumResults = BFI->SumRegions("evtwt", BFI->bkg_filtered_dataframes);
   summap sumResults_S = BFI->SumRegions("evtwt", BFI->sig_filtered_dataframes);
-  summap sumResults_obs = BFI->SumRegions("evtwt", BFI->data_filtered_dataframes);
 	
   // Initiate action
   BFI->ReportRegions(verbosity > 2 ? 1 : 0);
@@ -215,8 +247,8 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
   // Aggregate maps into more easily useable classes
   BFI->ConstructBkgBinObjects(countResults, sumResults, errorResults);
   BFI->AddSigToBinObjects(countResults_S, sumResults_S, errorResults_S, BFI->analysisbins);
-  // Only write data to json if data samples are specified
-  if(datalist.size() > 0) BFI->AddDataToBinObjects(countResults_obs, sumResults_obs, errorResults_obs, BFI->analysisbins);
+  // Only write data to json if we have observations
+  if(datalist.size() > 0 || config.data_as_background) BFI->AddDataToBinObjects(countResults_obs, sumResults_obs, errorResults_obs, BFI->analysisbins);
 	
   if (verbosity > 0 && !options.batch_mode) {
     BFI->PrintBins(verbosity > 1 ? 1 : 0);
