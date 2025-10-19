@@ -1,4 +1,5 @@
 #include "BuildFit.h"
+#include <set>
 
 ch::Categories BuildFit::BuildCats(JSONFactory* j){
 	ch::Categories cats{};
@@ -54,6 +55,44 @@ std::vector<std::string> BuildFit::GetBkgProcs(JSONFactory* j){
 		}
 	}
 	return bkgprocs;
+}
+
+std::vector<std::string> BuildFit::GetDataProcs(JSONFactory* j){
+	std::vector<std::string> dataprocs{};
+	
+	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
+		//inner loop process iterator
+		std::string binname = it.key();
+		for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
+			if(BFTool::ContainsAnySubstring(it2.key(), datakeys)){
+				dataprocs.push_back(it2.key());
+			}
+		}
+	}
+	//make this set unique 
+	std::set<std::string> my_data_set(dataprocs.begin(), dataprocs.end());
+	std::vector<std::string> dataprocsunique(my_data_set.begin(), my_data_set.end());
+	
+	return dataprocsunique;
+}
+
+std::map<std::string, float> BuildFit::LoadDataProcesses(JSONFactory* j, std::vector<std::string> dataKeys){
+	std::map<std::string, float> obs_rates = {};
+	float obs_rate = 0.;
+	for (json::iterator it = j->j.begin(); it != j->j.end(); ++it){
+		//inner loop process iterator
+		std::string binname = it.key();
+		//assign yield to obs bin map
+		obs_rate = 0.;  // Reset for each bin
+		for(int i = 0; i < dataKeys.size(); i++){
+			if(j->j[binname].contains(dataKeys[i])){
+				json json_array = j->j[binname][dataKeys[i]];
+				obs_rate += json_array[1].get<float>();
+			}
+		}
+		obs_rates[binname] = obs_rate;
+	}
+	return obs_rates;
 }
 std::vector<std::string> BuildFit::ExtractSignalDetails( std::string signalPoint){
 
@@ -143,9 +182,25 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     
     // Standard CombineHarvester setup
     ch::Categories cats = BuildCats(j);
-    std::map<std::string, float> obs_rates = BuildAsimovData(j);
-    std::vector<std::string> bkgprocs = GetBkgProcs(j);
     std::vector<std::string> signalDetails = ExtractSignalDetails(signalPoint);
+    
+    // Set up datakeys from config for data-as-background mode
+    datakeys = config.data;
+    
+    std::map<std::string, float> obs_rates;
+    std::vector<std::string> bkgprocs;
+    
+    if (config.data_as_background) {
+        std::cout << "Using data-as-background mode for ABCD" << std::endl;
+        // In data-as-background mode, use data samples as background processes
+        obs_rates = LoadDataProcesses(j, config.data);
+        bkgprocs = GetDataProcs(j);
+    } else {
+        std::cout << "Using standard MC-based ABCD mode" << std::endl;
+        // Standard mode: use MC backgrounds and Asimov data
+        obs_rates = BuildAsimovData(j);
+        bkgprocs = GetBkgProcs(j);
+    }
     
     // Get the control regions (the 3 regions that are NOT being predicted)
     std::vector<std::string> all_regions = {region_A, region_B, region_C, region_D};

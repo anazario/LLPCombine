@@ -32,6 +32,8 @@ class BuildFit{
 	ch::Categories BuildCats(JSONFactory* j);
 	std::map<std::string, float> BuildAsimovData(JSONFactory* j);
         std::vector<std::string> GetBkgProcs(JSONFactory* j);
+	std::vector<std::string> GetDataProcs(JSONFactory* j);
+	std::map<std::string, float> LoadDataProcesses(JSONFactory* j, std::vector<std::string> dataKeys);
 	std::vector<std::string> ExtractSignalDetails( std::string signalPoint);
 	std::vector<std::string> GetBinSet( JSONFactory* j);
        
@@ -43,6 +45,7 @@ class BuildFit{
 	std::string JoinStrings(const std::vector<std::string>& strings, const std::string& delimiter);
 	
 	std::vector<std::string> sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
+	std::vector<std::string> datakeys;  // Will be populated from config
 	
 
 };

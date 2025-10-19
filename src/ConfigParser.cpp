@@ -265,6 +265,7 @@ ConfigParser::~ConfigParser() {}
 
 void ConfigParser::SetDefaults() {
     config_.name = "default_analysis";
+    config_.data_as_background = false;
     config_.luminosity = 400.0;
     config_.output_json = "output.json";
     config_.output_dir = "./json/";
@@ -286,6 +287,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 
     // --- analysis section
     config_.name = GetValueOrDefault<std::string>(parser.values, "analysis.name", config_.name);
+    config_.data_as_background = GetValueOrDefault<bool>(parser.values, "analysis.data_as_background", config_.data_as_background);
     config_.luminosity = GetValueOrDefault<double>(parser.values, "analysis.luminosity", config_.luminosity);
     config_.output_json = GetValueOrDefault<std::string>(parser.values, "analysis.output_json", config_.output_json);
     config_.output_dir = GetValueOrDefault<std::string>(parser.values, "analysis.output_dir", config_.output_dir);

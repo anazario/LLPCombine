@@ -90,6 +90,7 @@ struct ABCDConfig {
 struct AnalysisConfig {
     std::string name;
     std::string method;  // "standard" or "ABCD"
+    bool data_as_background;  // Whether to treat data samples as background processes
     double luminosity;
     std::string output_json;
     std::string output_dir;

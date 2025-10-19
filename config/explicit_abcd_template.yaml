@@ -4,6 +4,7 @@
 analysis:
   method: "ABCD"
   name: "${ANALYSIS_NAME}"
+  data_as_background: ${DATA_AS_BACKGROUND}
   luminosity: ${LUMINOSITY}
   output_json: "${OUTPUT_JSON}"
   output_dir: "${OUTPUT_DIR}"

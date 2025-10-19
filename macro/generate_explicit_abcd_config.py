@@ -199,6 +199,7 @@ def main():
     
     # Options
     parser.add_argument("--verbosity", type=int, default=2, help="Verbosity level")
+    parser.add_argument("--data-as-background", action="store_true", help="Treat data samples as background processes (for data-driven ABCD)")
     
     args = parser.parse_args()
     
@@ -291,6 +292,7 @@ def main():
         "COMMON_CUTS": format_cuts_as_yaml(common_cuts),
         "ABCD_FORMULA": "(@0*@1/@2)",
         "GENERATE_DATACARDS": "true",
+        "DATA_AS_BACKGROUND": "true" if args.data_as_background else "false",
         "VERBOSITY": args.verbosity,
         "PARALLEL": "false",
         "DRY_RUN": "false"
