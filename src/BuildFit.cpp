@@ -146,7 +146,7 @@ void BuildFit::BuildAsimovFit(JSONFactory* j, std::string signalPoint, std::stri
 
 
       
-	cb.PrintAll();
+	//cb.PrintAll();  // Commented out to reduce verbose output
 	cb.WriteDatacard(datacard_dir+"/"+signalPoint+"/"+signalPoint+".txt");
 
 }
@@ -272,7 +272,7 @@ void BuildFit::BuildABCDFit(JSONFactory* j, std::string signalPoint, std::string
     
     std::cout << "=== Systematics Applied ===" << std::endl;
     
-    cb.PrintAll();
+    //cb.PrintAll();  // Commented out to reduce verbose output
     cb.WriteDatacard(datacard_dir + "/" + signalPoint + "/" + signalPoint + ".txt");
 }
 

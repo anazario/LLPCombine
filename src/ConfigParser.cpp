@@ -50,12 +50,11 @@ T GetValueOrDefault(const std::map<std::string, std::string>& values,
     return def;
 }
 
-static inline const std::vector<std::string>& GetListOrDefault(
+static inline std::vector<std::string> GetListOrDefault(
     const std::map<std::string, std::vector<std::string>>& lists,
-    const std::string& key,
-    const std::vector<std::string>& def = *(new std::vector<std::string>())) {
+    const std::string& key) {
     auto it = lists.find(key);
-    if (it == lists.end()) return def;
+    if (it == lists.end()) return std::vector<std::string>();
     return it->second;
 }
 
