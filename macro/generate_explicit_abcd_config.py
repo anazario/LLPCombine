@@ -191,7 +191,7 @@ def main():
     parser.add_argument("--backgrounds", default="[]", help="Background samples (JSON list)")
     parser.add_argument("--signals", default='["gogoZ"]', help="Signal samples (JSON list)")
     parser.add_argument("--signal-points", default='["gogoZ_1500_500_100_10"]', help="Signal points (JSON list)")
-    parser.add_argument("--data", default='["DisplacedJet18"]', help="Data samples (JSON list)")
+    parser.add_argument("--data", default='["MET18"]', help="Data samples (JSON list)")
     
     # Systematics settings
     parser.add_argument("--syst-prefix", help="Systematics name prefix (default: derived from analysis name)")

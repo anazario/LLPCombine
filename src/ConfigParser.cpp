@@ -391,7 +391,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 // ------------------------------------------------------------
 std::string ConfigParser::GetTriggerCuts() const {
     // Comment out the next line to disable trigger cuts for all datasets
-    return "Flag_BadChargedCandidateFilter && Flag_BadPFMuonDzFilter && Flag_BadPFMuonFilter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_HBHENoiseFilter && Flag_HBHENoiseIsoFilter && Flag_ecalBadCalibFilter && Flag_eeBadScFilter && Flag_goodVertices && Flag_hfNoisyHitsFilter && Flag_globalSuperTightHalo2016Filter && (Trigger_PFMET120_PFMHT120_IDTight || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight || Trigger_PFMET120_PFMHT120_IDTight_PFHT60 || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60)";
+    return "Flag_BadChargedCandidateFilter && Flag_BadPFMuonDzFilter && Flag_BadPFMuonFilter && Flag_HBHENoiseFilter && Flag_HBHENoiseIsoFilter && Flag_ecalBadCalibFilter && Flag_eeBadScFilter && Flag_goodVertices && Flag_hfNoisyHitsFilter && Flag_globalSuperTightHalo2016Filter && (Trigger_PFMET120_PFMHT120_IDTight || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight || Trigger_PFMET120_PFMHT120_IDTight_PFHT60 || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60)";
     // return "";  // Uncomment this line to disable trigger cuts
 }
 
