@@ -284,9 +284,9 @@ private:
 
 ConfigParser::ConfigParser() {
     std::cout << "DEBUG: ConfigParser constructor started" << std::endl;
-    std::cout << "DEBUG: About to call SetDefaults()" << std::endl;
-    SetDefaults();
-    std::cout << "DEBUG: SetDefaults() completed" << std::endl;
+    std::cout << "DEBUG: AnalysisConfig should be auto-initialized" << std::endl;
+    std::cout << "DEBUG: config_.abcd.common_cuts size: " << config_.abcd.common_cuts.size() << std::endl;
+    std::cout << "DEBUG: config_.abcd.common_cuts capacity: " << config_.abcd.common_cuts.capacity() << std::endl;
 }
 ConfigParser::~ConfigParser() {}
 

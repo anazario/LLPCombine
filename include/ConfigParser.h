@@ -54,6 +54,9 @@ struct ABCDConfig {
     std::string formula;                          // ABCD formula (default: "(@0*@1/@2)")
     bool generate_datacards;                      // whether to generate CombineHarvester datacards
     
+    // Constructor to properly initialize members
+    ABCDConfig() : use_explicit_format(false), formula("(@0*@1/@2)"), generate_datacards(true) {}
+    
     // Helper methods
     std::string GetPredictedBin() const {
         if (regions.find(predicted_region) != regions.end()) {
@@ -114,6 +117,19 @@ struct AnalysisConfig {
     int verbosity;
     bool parallel;
     bool dry_run;
+    
+    // Constructor to properly initialize members
+    AnalysisConfig() : 
+        name("default_analysis"),
+        method("standard"),
+        data_as_background(false),
+        apply_trigger_cuts(true),
+        luminosity(400.0),
+        output_json("output.json"),
+        output_dir("./json/"),
+        verbosity(1),
+        parallel(false),
+        dry_run(false) {}
 };
 
 class ConfigParser {
