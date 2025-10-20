@@ -659,6 +659,10 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
         bin.cuts.insert(bin.cuts.end(), config_.abcd.common_cuts.begin(), config_.abcd.common_cuts.end());
         bin.cuts.insert(bin.cuts.end(), spec.xcuts.begin(), spec.xcuts.end());
         auto y_filtered = filterCutsForSV(spec.ycuts, spec.sv_type);
+        std::cout << "DEBUG: Region " << spec.suffix << " sv_type='" << spec.sv_type << "' y_cuts=" << spec.ycuts.size() << " filtered=" << y_filtered.size() << std::endl;
+        for (const auto& cut : y_filtered) {
+            std::cout << "  Y-filtered: " << cut << std::endl;
+        }
         bin.cuts.insert(bin.cuts.end(), y_filtered.begin(), y_filtered.end());
 
         config_.bins.push_back(bin);
