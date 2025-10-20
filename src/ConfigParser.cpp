@@ -88,6 +88,11 @@ public:
     std::map<std::string, std::vector<std::string>> lists;
     std::map<std::string, std::map<std::string, std::string>> sections;
     std::map<std::string, std::vector<std::string>> anchors;
+    
+    // State for nested key tracking
+    std::string current_key;
+    std::string last_section;
+    std::string last_subsection;
 
     bool parse(const std::string& filename) {
         std::ifstream file(filename);
@@ -151,12 +156,20 @@ public:
                     parseKeyValue(line, current_section, "", current_anchor_key);
                 }
             } else {
-                // deeper nested: parse directly without static state
+                // deeper nested: maintain state for nested keys
+                if (current_section != last_section || current_subsection != last_subsection) {
+                    current_key = "";
+                    last_section = current_section;
+                    last_subsection = current_subsection;
+                }
+
                 if (line.back() == ':') {
-                    // This is a nested key - skip for now
-                    continue;
+                    std::string extracted_key = trimCopy(line.substr(0, line.length() - 1));
+                    current_key = extracted_key;
                 } else {
-                    parseKeyValue(line, current_section, current_subsection, current_anchor_key);
+                    std::string subsection_full = current_subsection;
+                    if (!current_key.empty()) subsection_full += "." + current_key;
+                    parseKeyValue(line, current_section, subsection_full, current_anchor_key);
                 }
             }
         }
