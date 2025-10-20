@@ -55,7 +55,14 @@ static inline std::vector<std::string> GetListOrDefault(
     const std::string& key) {
     auto it = lists.find(key);
     if (it == lists.end()) return std::vector<std::string>();
-    return it->second;
+    
+    // Safe copy to avoid memory corruption
+    std::vector<std::string> result;
+    result.reserve(it->second.size());
+    for (const auto& item : it->second) {
+        result.emplace_back(item);
+    }
+    return result;
 }
 
 // ------------------------------------------------------------
@@ -283,7 +290,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     if (!parser.parse(config_file)) return false;
 
     // set logging level from defaults or options later (verbosity already in config_)
-    CURRENT_LOG_LEVEL = (config_.verbosity >= 3 ? LOG_DEBUG : (config_.verbosity == 2 ? LOG_INFO : LOG_WARN));
+    CURRENT_LOG_LEVEL = LOG_DEBUG; // Force debug level to help diagnose crash
 
     // --- analysis section
     config_.name = GetValueOrDefault<std::string>(parser.values, "analysis.name", config_.name);
@@ -315,19 +322,12 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             config_.abcd.y_axis.high_cuts = GetListOrDefault(parser.lists, "y_axis.y_high.cuts");
 
             // common cuts - the original used "abcd_common_cuts" as top-level list
-            auto common_cuts_it = parser.lists.find("abcd_common_cuts");
-            if (common_cuts_it != parser.lists.end()) {
-                try {
-                    config_.abcd.common_cuts = common_cuts_it->second;
-                    Log(LOG_DEBUG, "Found " + std::to_string(config_.abcd.common_cuts.size()) + " common cuts.");
-                } catch (const std::exception& e) {
-                    Log(LOG_DEBUG, "Error accessing common cuts: " + std::string(e.what()));
-                    config_.abcd.common_cuts.clear();
-                }
-            } else {
-                Log(LOG_DEBUG, "No abcd_common_cuts found in config");
-                config_.abcd.common_cuts.clear();
+            Log(LOG_DEBUG, "Looking for abcd_common_cuts key in parser.lists");
+            for (const auto& pair : parser.lists) {
+                Log(LOG_DEBUG, "Available list key: '" + pair.first + "' with " + std::to_string(pair.second.size()) + " items");
             }
+            config_.abcd.common_cuts = GetListOrDefault(parser.lists, "abcd_common_cuts");
+            Log(LOG_DEBUG, "Found " + std::to_string(config_.abcd.common_cuts.size()) + " common cuts.");
 
             GenerateABCDBinsFromAxes();
         } else {
