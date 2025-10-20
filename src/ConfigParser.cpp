@@ -390,7 +390,9 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 // Get default trigger cuts
 // ------------------------------------------------------------
 std::string ConfigParser::GetTriggerCuts() const {
+    // Comment out the next line to disable trigger cuts for all datasets
     return "Flag_BadChargedCandidateFilter && Flag_BadPFMuonDzFilter && Flag_BadPFMuonFilter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_HBHENoiseFilter && Flag_HBHENoiseIsoFilter && Flag_ecalBadCalibFilter && Flag_eeBadScFilter && Flag_goodVertices && Flag_hfNoisyHitsFilter && Flag_globalSuperTightHalo2016Filter && (Trigger_PFMET120_PFMHT120_IDTight || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight || Trigger_PFMET120_PFMHT120_IDTight_PFHT60 || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60)";
+    // return "";  // Uncomment this line to disable trigger cuts
 }
 
 // ------------------------------------------------------------
@@ -399,10 +401,23 @@ std::string ConfigParser::GetTriggerCuts() const {
 std::string ConfigParser::GetCombinedCuts(const std::string& bin_name) const {
     for (const auto& bin : config_.bins) {
         if (bin.name == bin_name) {
+            if (bin.cuts.empty()) return "";
+            std::string combined = "(" + bin.cuts[0] + ")";
+            for (size_t i = 1; i < bin.cuts.size(); ++i) combined += " && (" + bin.cuts[i] + ")";
+            return combined;
+        }
+    }
+    return "";
+}
+
+// Get combined cuts with trigger cuts (for data samples)
+std::string ConfigParser::GetCombinedCuts(const std::string& bin_name, bool include_trigger_cuts) const {
+    for (const auto& bin : config_.bins) {
+        if (bin.name == bin_name) {
             std::vector<std::string> all_cuts;
             
-            // Add trigger cuts first if enabled
-            if (config_.apply_trigger_cuts) {
+            // Add trigger cuts first if enabled and requested
+            if (config_.apply_trigger_cuts && include_trigger_cuts) {
                 all_cuts.push_back(GetTriggerCuts());
             }
             

@@ -202,15 +202,27 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	
   // Create analysis bins from configuration
   for (const auto& bin : config.bins) {
-    std::string combined_cuts = configParser.GetCombinedCuts(bin.name);
+    // Get cuts for MC (without trigger cuts)
+    std::string mc_cuts = configParser.GetCombinedCuts(bin.name);
+    // Get cuts for data (with trigger cuts if enabled)
+    std::string data_cuts = configParser.GetCombinedCuts(bin.name, true);
 		
     if (verbosity > 1 && !options.batch_mode) {
       std::cout << "Creating bin: " << bin.name << std::endl;
       std::cout << "  Description: " << bin.description << std::endl;
-      std::cout << "  Cuts: " << combined_cuts << std::endl;
+      std::cout << "  MC cuts: " << mc_cuts << std::endl;
+      if (config.apply_trigger_cuts) {
+        std::cout << "  Data cuts (with triggers): " << data_cuts << std::endl;
+      }
     }
 		
-    BFI->FilterRegions(bin.name, combined_cuts);
+    if (config.apply_trigger_cuts && mc_cuts != data_cuts) {
+      // Use different cuts for data vs MC
+      BFI->FilterRegionsWithDataCuts(bin.name, mc_cuts, data_cuts);
+    } else {
+      // Use same cuts for all (trigger cuts disabled or same cuts)
+      BFI->FilterRegions(bin.name, mc_cuts);
+    }
     BFI->CreateBin(bin.name);
   }
 	

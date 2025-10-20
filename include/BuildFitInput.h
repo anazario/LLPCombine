@@ -64,6 +64,7 @@ class BuildFitInput{
 	void LoadData_byMap( map< std::string, stringlist>& BkgDict, double Lumi );
 	
 	void FilterRegions( std::string filterName, std::string filterCuts );
+	void FilterRegionsWithDataCuts( std::string filterName, std::string mcCuts, std::string dataCuts );
 	countmap CountRegions(nodemap& filtered_df);
 	summap SumRegions(std::string branchname, nodemap& filtered_df);
 	errormap ComputeStatError( countmap countResults, map< std::string, double >& evtwt );

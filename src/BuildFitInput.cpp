@@ -145,6 +145,24 @@ void BuildFitInput::FilterRegions( std::string filterName, std::string filterCut
 
 		
 }
+
+void BuildFitInput::FilterRegionsWithDataCuts( std::string filterName, std::string mcCuts, std::string dataCuts ){
+	
+	std::cout<<"Building bkg nodes with "<< filterName <<" (MC cuts)\n";
+	for (const auto& it : rdf_BkgDict){
+		bkg_filtered_dataframes[ std::make_pair(it.first,filterName) ] = std::make_unique<RN> ( (it.second)->Filter(mcCuts, filterName) );
+	}
+	std::cout<<"Building sig nodes with "<< filterName <<" (MC cuts)\n";
+	for (const auto& it : rdf_SigDict){
+		sig_filtered_dataframes[ std::make_pair(it.first,filterName) ] = std::make_unique<RN> ( (it.second)->Filter(mcCuts, filterName) );
+	}
+	std::cout<<"Building data nodes with "<< filterName <<" (data cuts with triggers)\n";
+	for (const auto& it : rdf_DataDict){
+		data_filtered_dataframes[ std::make_pair(it.first,filterName) ] = std::make_unique<RN> ( (it.second)->Filter(dataCuts, filterName) );
+	}
+
+}
+
 void BuildFitInput::ReportRegions(int verbosity){
 	std::cout<<"Reporting bkg nodes ...  \n";
 	for (const auto& it : _base_rdf_BkgDict){
