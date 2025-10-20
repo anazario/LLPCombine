@@ -93,8 +93,6 @@ struct ABCDConfig {
 struct AnalysisConfig {
     std::string name;
     std::string method;  // "standard" or "ABCD"
-    bool data_as_background;  // Whether to treat data samples as background processes
-    bool apply_trigger_cuts;  // Whether to apply default HLT trigger cuts (data only for now)
     double luminosity;
     std::string output_json;
     std::string output_dir;
@@ -118,18 +116,22 @@ struct AnalysisConfig {
     bool parallel;
     bool dry_run;
     
+    // Add the missing fields at the END to maintain compatibility
+    bool data_as_background;  // Whether to treat data samples as background processes
+    bool apply_trigger_cuts;  // Whether to apply default HLT trigger cuts (data only for now)
+    
     // Constructor to properly initialize members
     AnalysisConfig() : 
         name("default_analysis"),
         method("standard"),
-        data_as_background(false),
-        apply_trigger_cuts(true),
         luminosity(400.0),
         output_json("output.json"),
         output_dir("./json/"),
         verbosity(1),
         parallel(false),
-        dry_run(false) {}
+        dry_run(false),
+        data_as_background(false),
+        apply_trigger_cuts(true) {}
 };
 
 class ConfigParser {
