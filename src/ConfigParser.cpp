@@ -266,6 +266,7 @@ ConfigParser::~ConfigParser() {}
 void ConfigParser::SetDefaults() {
     config_.name = "default_analysis";
     config_.data_as_background = false;
+    config_.apply_trigger_cuts = true;  // Enable trigger cuts by default
     config_.luminosity = 400.0;
     config_.output_json = "output.json";
     config_.output_dir = "./json/";
@@ -288,6 +289,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     // --- analysis section
     config_.name = GetValueOrDefault<std::string>(parser.values, "analysis.name", config_.name);
     config_.data_as_background = GetValueOrDefault<bool>(parser.values, "analysis.data_as_background", config_.data_as_background);
+    config_.apply_trigger_cuts = GetValueOrDefault<bool>(parser.values, "analysis.apply_trigger_cuts", config_.apply_trigger_cuts);
     config_.luminosity = GetValueOrDefault<double>(parser.values, "analysis.luminosity", config_.luminosity);
     config_.output_json = GetValueOrDefault<std::string>(parser.values, "analysis.output_json", config_.output_json);
     config_.output_dir = GetValueOrDefault<std::string>(parser.values, "analysis.output_dir", config_.output_dir);
@@ -385,14 +387,34 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 }
 
 // ------------------------------------------------------------
+// Get default trigger cuts
+// ------------------------------------------------------------
+std::string ConfigParser::GetTriggerCuts() const {
+    return "Flag_BadChargedCandidateFilter && Flag_BadPFMuonDzFilter && Flag_BadPFMuonFilter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_HBHENoiseFilter && Flag_HBHENoiseIsoFilter && Flag_ecalBadCalibFilter && Flag_eeBadScFilter && Flag_goodVertices && Flag_hfNoisyHitsFilter && Flag_globalSuperTightHalo2016Filter && (Trigger_PFMET120_PFMHT120_IDTight || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight || Trigger_PFMET120_PFMHT120_IDTight_PFHT60 || Trigger_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60)";
+}
+
+// ------------------------------------------------------------
 // Combine cuts for a bin
 // ------------------------------------------------------------
 std::string ConfigParser::GetCombinedCuts(const std::string& bin_name) const {
     for (const auto& bin : config_.bins) {
         if (bin.name == bin_name) {
-            if (bin.cuts.empty()) return "";
-            std::string combined = "(" + bin.cuts[0] + ")";
-            for (size_t i = 1; i < bin.cuts.size(); ++i) combined += " && (" + bin.cuts[i] + ")";
+            std::vector<std::string> all_cuts;
+            
+            // Add trigger cuts first if enabled
+            if (config_.apply_trigger_cuts) {
+                all_cuts.push_back(GetTriggerCuts());
+            }
+            
+            // Add bin-specific cuts
+            for (const auto& cut : bin.cuts) {
+                all_cuts.push_back(cut);
+            }
+            
+            if (all_cuts.empty()) return "";
+            
+            std::string combined = "(" + all_cuts[0] + ")";
+            for (size_t i = 1; i < all_cuts.size(); ++i) combined += " && (" + all_cuts[i] + ")";
             return combined;
         }
     }

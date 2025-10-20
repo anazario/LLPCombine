@@ -200,6 +200,7 @@ def main():
     # Options
     parser.add_argument("--verbosity", type=int, default=2, help="Verbosity level")
     parser.add_argument("--data-as-background", action="store_true", help="Treat data samples as background processes (for data-driven ABCD)")
+    parser.add_argument("--no-trigger-cuts", action="store_true", help="Disable default HLT trigger cuts")
     
     args = parser.parse_args()
     
@@ -293,6 +294,7 @@ def main():
         "ABCD_FORMULA": "(@0*@1/@2)",
         "GENERATE_DATACARDS": "true",
         "DATA_AS_BACKGROUND": "true" if args.data_as_background else "false",
+        "APPLY_TRIGGER_CUTS": "false" if args.no_trigger_cuts else "true",
         "VERBOSITY": args.verbosity,
         "PARALLEL": "false",
         "DRY_RUN": "false"

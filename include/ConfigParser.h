@@ -91,6 +91,7 @@ struct AnalysisConfig {
     std::string name;
     std::string method;  // "standard" or "ABCD"
     bool data_as_background;  // Whether to treat data samples as background processes
+    bool apply_trigger_cuts;  // Whether to apply default HLT trigger cuts
     double luminosity;
     std::string output_json;
     std::string output_dir;
@@ -125,6 +126,7 @@ public:
     
     // Utility methods
     std::string GetCombinedCuts(const std::string& bin_name) const;
+    std::string GetTriggerCuts() const;
     void PrintConfig() const;
     bool ValidateConfig() const;
     bool ValidateABCDConfig() const;
