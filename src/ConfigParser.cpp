@@ -367,8 +367,20 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             }
             
             Log(LOG_DEBUG, "About to call GetListOrDefault...");
-            config_.abcd.common_cuts = GetListOrDefault(parser.lists, "abcd_common_cuts");
-            Log(LOG_DEBUG, "GetListOrDefault completed. Result size: " + std::to_string(config_.abcd.common_cuts.size()));
+            
+            // Debug the destination vector before assignment
+            Log(LOG_DEBUG, "Destination vector address: " + std::to_string(reinterpret_cast<uintptr_t>(&config_.abcd.common_cuts)));
+            Log(LOG_DEBUG, "Destination vector size before: " + std::to_string(config_.abcd.common_cuts.size()));
+            Log(LOG_DEBUG, "Destination vector capacity before: " + std::to_string(config_.abcd.common_cuts.capacity()));
+            
+            // Try assignment
+            auto temp_result = GetListOrDefault(parser.lists, "abcd_common_cuts");
+            Log(LOG_DEBUG, "GetListOrDefault returned vector with size: " + std::to_string(temp_result.size()));
+            
+            // Try explicit assignment instead of direct assignment
+            Log(LOG_DEBUG, "About to perform assignment...");
+            config_.abcd.common_cuts = std::move(temp_result);
+            Log(LOG_DEBUG, "Assignment completed. Result size: " + std::to_string(config_.abcd.common_cuts.size()));
 
             GenerateABCDBinsFromAxes();
         } else {
