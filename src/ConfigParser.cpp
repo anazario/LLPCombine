@@ -587,8 +587,9 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
         return std::string("");
     };
 
-    std::string sv_type_low = getSVType(config_.abcd.x_axis.low_cuts);
-    std::string sv_type_high = getSVType(config_.abcd.x_axis.high_cuts);
+    std::string sv_type_common = getSVType(config_.abcd.common_cuts);
+    std::string sv_type_low = sv_type_common;
+    std::string sv_type_high = sv_type_common;
     std::string prefix = config_.abcd.x_axis.name + "_" + config_.abcd.y_axis.name + "_";
 
     auto x_low_desc = config_.abcd.x_axis.low_desc.empty() ? config_.abcd.x_axis.name + "_low" : config_.abcd.x_axis.low_desc;
