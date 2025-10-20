@@ -53,15 +53,31 @@ T GetValueOrDefault(const std::map<std::string, std::string>& values,
 static inline std::vector<std::string> GetListOrDefault(
     const std::map<std::string, std::vector<std::string>>& lists,
     const std::string& key) {
+    std::cout << "DEBUG: GetListOrDefault called for key: " << key << std::endl;
+    
     auto it = lists.find(key);
-    if (it == lists.end()) return std::vector<std::string>();
+    if (it == lists.end()) {
+        std::cout << "DEBUG: Key not found, returning empty vector" << std::endl;
+        return std::vector<std::string>();
+    }
+    
+    std::cout << "DEBUG: Key found, source vector address: " << reinterpret_cast<uintptr_t>(&it->second) << std::endl;
+    std::cout << "DEBUG: Source vector size: " << it->second.size() << std::endl;
     
     // Safe copy to avoid memory corruption
     std::vector<std::string> result;
+    std::cout << "DEBUG: Created result vector, about to reserve..." << std::endl;
     result.reserve(it->second.size());
+    std::cout << "DEBUG: Reserved space, about to copy items..." << std::endl;
+    
+    size_t count = 0;
     for (const auto& item : it->second) {
+        std::cout << "DEBUG: Copying item " << count << ": '" << item << "'" << std::endl;
         result.emplace_back(item);
+        count++;
     }
+    
+    std::cout << "DEBUG: Copy completed, returning result with size: " << result.size() << std::endl;
     return result;
 }
 
@@ -323,11 +339,36 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 
             // common cuts - the original used "abcd_common_cuts" as top-level list
             Log(LOG_DEBUG, "Looking for abcd_common_cuts key in parser.lists");
+            
+            // Debug: Print all available keys first
             for (const auto& pair : parser.lists) {
                 Log(LOG_DEBUG, "Available list key: '" + pair.first + "' with " + std::to_string(pair.second.size()) + " items");
             }
+            
+            // Debug: Check if the specific key exists and examine its contents
+            auto it = parser.lists.find("abcd_common_cuts");
+            if (it != parser.lists.end()) {
+                Log(LOG_DEBUG, "Found abcd_common_cuts vector at address: " + std::to_string(reinterpret_cast<uintptr_t>(&it->second)));
+                Log(LOG_DEBUG, "Vector size: " + std::to_string(it->second.size()));
+                Log(LOG_DEBUG, "Vector capacity: " + std::to_string(it->second.capacity()));
+                
+                // Try to access each element individually
+                for (size_t i = 0; i < it->second.size(); ++i) {
+                    try {
+                        const std::string& item = it->second[i];
+                        Log(LOG_DEBUG, "Item " + std::to_string(i) + " at address " + std::to_string(reinterpret_cast<uintptr_t>(&item)) + ": '" + item + "'");
+                    } catch (...) {
+                        Log(LOG_DEBUG, "ERROR: Failed to access item " + std::to_string(i));
+                        break;
+                    }
+                }
+            } else {
+                Log(LOG_DEBUG, "abcd_common_cuts key not found!");
+            }
+            
+            Log(LOG_DEBUG, "About to call GetListOrDefault...");
             config_.abcd.common_cuts = GetListOrDefault(parser.lists, "abcd_common_cuts");
-            Log(LOG_DEBUG, "Found " + std::to_string(config_.abcd.common_cuts.size()) + " common cuts.");
+            Log(LOG_DEBUG, "GetListOrDefault completed. Result size: " + std::to_string(config_.abcd.common_cuts.size()));
 
             GenerateABCDBinsFromAxes();
         } else {
