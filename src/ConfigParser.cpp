@@ -314,11 +314,31 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 
             config_.abcd.common_cuts = GetListOrDefault(parser.lists, "abcd_common_cuts");
 
-            // Debug axis cuts loading
-            std::cout << "X-axis low cuts: " << config_.abcd.x_axis.low_cuts.size() << std::endl;
-            std::cout << "X-axis high cuts: " << config_.abcd.x_axis.high_cuts.size() << std::endl;
-            std::cout << "Y-axis low cuts: " << config_.abcd.y_axis.low_cuts.size() << std::endl;
-            std::cout << "Y-axis high cuts: " << config_.abcd.y_axis.high_cuts.size() << std::endl;
+            // Debug what's actually loaded
+            std::cout << "=== DEBUG AXIS CUTS ===" << std::endl;
+            std::cout << "X-axis name: " << config_.abcd.x_axis.name << std::endl;
+            std::cout << "Y-axis name: " << config_.abcd.y_axis.name << std::endl;
+            
+            std::cout << "X-axis low cuts (" << config_.abcd.x_axis.low_cuts.size() << "):" << std::endl;
+            for (const auto& cut : config_.abcd.x_axis.low_cuts) {
+                std::cout << "  - " << cut << std::endl;
+            }
+            
+            std::cout << "X-axis high cuts (" << config_.abcd.x_axis.high_cuts.size() << "):" << std::endl;
+            for (const auto& cut : config_.abcd.x_axis.high_cuts) {
+                std::cout << "  - " << cut << std::endl;
+            }
+            
+            std::cout << "Y-axis low cuts (" << config_.abcd.y_axis.low_cuts.size() << "):" << std::endl;
+            for (const auto& cut : config_.abcd.y_axis.low_cuts) {
+                std::cout << "  - " << cut << std::endl;
+            }
+            
+            std::cout << "Y-axis high cuts (" << config_.abcd.y_axis.high_cuts.size() << "):" << std::endl;
+            for (const auto& cut : config_.abcd.y_axis.high_cuts) {
+                std::cout << "  - " << cut << std::endl;
+            }
+            std::cout << "========================" << std::endl;
 
             GenerateABCDBinsFromAxes();
         } else {
@@ -569,11 +589,28 @@ void ConfigParser::GenerateABCDBinsFromAxes() {
     auto filterCutsForSV = [](const std::vector<std::string>& cuts, const std::string& sv_type) {
         std::vector<std::string> filtered;
         filtered.reserve(cuts.size());
+        
+        // Check if cuts contain both Leptonic and Hadronic SV cuts
+        bool has_leptonic = false, has_hadronic = false;
         for (const auto& cut : cuts) {
-            if ((cut.find("LeptonicSV_") == 0 && sv_type == "nLeptonic") ||
-                (cut.find("HadronicSV_") == 0 && sv_type == "nHadronic") ||
-                (cut.find("SV_") == 0) || (cut.find("rjr_") == 0)) {
-                filtered.push_back(cut);
+            if (cut.find("LeptonicSV_") == 0) has_leptonic = true;
+            if (cut.find("HadronicSV_") == 0) has_hadronic = true;
+        }
+        
+        for (const auto& cut : cuts) {
+            // If both types are present, filter by sv_type
+            if (has_leptonic && has_hadronic) {
+                if ((cut.find("LeptonicSV_") == 0 && sv_type == "nLeptonic") ||
+                    (cut.find("HadronicSV_") == 0 && sv_type == "nHadronic") ||
+                    (cut.find("SV_") == 0) || (cut.find("rjr_") == 0)) {
+                    filtered.push_back(cut);
+                }
+            } else {
+                // If only one type or neither, include all SV-related cuts
+                if (cut.find("LeptonicSV_") == 0 || cut.find("HadronicSV_") == 0 ||
+                    cut.find("SV_") == 0 || cut.find("rjr_") == 0) {
+                    filtered.push_back(cut);
+                }
             }
         }
         return filtered;
