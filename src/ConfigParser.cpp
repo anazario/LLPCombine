@@ -301,6 +301,12 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 
             config_.abcd.common_cuts = GetListOrDefault(parser.lists, "abcd_common_cuts");
 
+            // Debug axis cuts loading
+            std::cout << "X-axis low cuts: " << config_.abcd.x_axis.low_cuts.size() << std::endl;
+            std::cout << "X-axis high cuts: " << config_.abcd.x_axis.high_cuts.size() << std::endl;
+            std::cout << "Y-axis low cuts: " << config_.abcd.y_axis.low_cuts.size() << std::endl;
+            std::cout << "Y-axis high cuts: " << config_.abcd.y_axis.high_cuts.size() << std::endl;
+
             GenerateABCDBinsFromAxes();
         } else {
             // old format: read abcd.regions.* values
