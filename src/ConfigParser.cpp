@@ -282,7 +282,7 @@ private:
 // ConfigParser implementation (refactored)
 // ------------------------------------------------------------
 
-ConfigParser::ConfigParser() { SetDefaults(); }
+ConfigParser::ConfigParser() : config_{} { SetDefaults(); }
 ConfigParser::~ConfigParser() {}
 
 void ConfigParser::SetDefaults() {
@@ -296,26 +296,28 @@ void ConfigParser::SetDefaults() {
     config_.parallel = false;
     config_.dry_run = false;
     
-    // Initialize ABCD structure
+    // Initialize ABCD structure - use assignment instead of clear() to avoid corrupted memory
     config_.abcd.use_explicit_format = false;
     config_.abcd.formula = "(@0*@1/@2)";
     config_.abcd.generate_datacards = true;
     config_.abcd.predicted_region = "";
-    config_.abcd.common_cuts.clear();  // Properly initialize the vector
-    config_.abcd.regions.clear();
     
-    // Initialize axis configs
+    // Use assignment to ensure vectors are properly constructed
+    config_.abcd.common_cuts = std::vector<std::string>();
+    config_.abcd.regions = std::map<std::string, std::string>();
+    
+    // Initialize axis configs with assignment
     config_.abcd.x_axis.name = "";
     config_.abcd.x_axis.low_desc = "";
     config_.abcd.x_axis.high_desc = "";
-    config_.abcd.x_axis.low_cuts.clear();
-    config_.abcd.x_axis.high_cuts.clear();
+    config_.abcd.x_axis.low_cuts = std::vector<std::string>();
+    config_.abcd.x_axis.high_cuts = std::vector<std::string>();
     
     config_.abcd.y_axis.name = "";
     config_.abcd.y_axis.low_desc = "";
     config_.abcd.y_axis.high_desc = "";
-    config_.abcd.y_axis.low_cuts.clear();
-    config_.abcd.y_axis.high_cuts.clear();
+    config_.abcd.y_axis.low_cuts = std::vector<std::string>();
+    config_.abcd.y_axis.high_cuts = std::vector<std::string>();
 }
 
 bool ConfigParser::LoadConfig(const std::string& config_file) {
