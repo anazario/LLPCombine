@@ -272,9 +272,29 @@ private:
 
 ConfigParser::ConfigParser() {
     std::cout << "DEBUG: ConfigParser constructor started" << std::endl;
-    std::cout << "DEBUG: AnalysisConfig should be auto-initialized" << std::endl;
-    std::cout << "DEBUG: config_.abcd.common_cuts size: " << config_.abcd.common_cuts.size() << std::endl;
-    std::cout << "DEBUG: config_.abcd.common_cuts capacity: " << config_.abcd.common_cuts.capacity() << std::endl;
+    
+    // Check the memory addresses and layout
+    std::cout << "DEBUG: &config_ = " << &config_ << std::endl;
+    std::cout << "DEBUG: &config_.abcd = " << &config_.abcd << std::endl;
+    std::cout << "DEBUG: &config_.abcd.common_cuts = " << &config_.abcd.common_cuts << std::endl;
+    
+    // Check if we can safely access basic fields
+    try {
+        std::cout << "DEBUG: config_.name = '" << config_.name << "'" << std::endl;
+        std::cout << "DEBUG: config_.luminosity = " << config_.luminosity << std::endl;
+    } catch (...) {
+        std::cout << "ERROR: Cannot access basic config fields!" << std::endl;
+    }
+    
+    // Try to manually construct a vector and assign it
+    try {
+        std::vector<std::string> test_vector;
+        std::cout << "DEBUG: Created test vector, size=" << test_vector.size() << std::endl;
+        config_.abcd.common_cuts = test_vector;
+        std::cout << "DEBUG: Assignment succeeded, new size=" << config_.abcd.common_cuts.size() << std::endl;
+    } catch (...) {
+        std::cout << "ERROR: Cannot assign to config_.abcd.common_cuts" << std::endl;
+    }
 }
 ConfigParser::~ConfigParser() {}
 
