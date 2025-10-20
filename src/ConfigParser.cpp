@@ -168,24 +168,12 @@ public:
                     parseKeyValue(line, current_section, "", current_anchor_key);
                 }
             } else {
-                // deeper nested: maintain state for nested keys
-                static std::string current_key = "";
-                static std::string last_section = "";
-                static std::string last_subsection = "";
-
-                if (current_section != last_section || current_subsection != last_subsection) {
-                    current_key = "";
-                    last_section = current_section;
-                    last_subsection = current_subsection;
-                }
-
+                // deeper nested: parse directly without static state
                 if (line.back() == ':') {
-                    std::string extracted_key = trimCopy(line.substr(0, line.length() - 1));
-                    current_key = extracted_key;
+                    // This is a nested key - skip for now
+                    continue;
                 } else {
-                    std::string subsection_full = current_subsection;
-                    if (!current_key.empty()) subsection_full += "." + current_key;
-                    parseKeyValue(line, current_section, subsection_full, current_anchor_key);
+                    parseKeyValue(line, current_section, current_subsection, current_anchor_key);
                 }
             }
         }
