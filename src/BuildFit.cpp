@@ -309,8 +309,36 @@ void BuildFit::ApplySystematics(const std::vector<SystematicConfig>& systematics
         } else if (syst.type == "rateParam") {
             if (syst.name.find("closure_constraint") != std::string::npos) {
                 // This is the ABCD formula constraint for predicted region
+                // Generate correct formula based on which region is predicted
+                std::string formula;
+                std::string parameters;
+                
+                // Get ABCD regions in standard order
+                std::string region_A = abcd.regions.at("region_A");
+                std::string region_B = abcd.regions.at("region_B");
+                std::string region_C = abcd.regions.at("region_C");
+                std::string region_D = abcd.regions.at("region_D");
+                
+                if (predicted_bin == region_A) {
+                    // A = B * C / D
+                    formula = "(@0*@1/@2)";
+                    parameters = "scale_" + region_B + ",scale_" + region_C + ",scale_" + region_D;
+                } else if (predicted_bin == region_B) {
+                    // B = A * D / C
+                    formula = "(@0*@1/@2)";
+                    parameters = "scale_" + region_A + ",scale_" + region_D + ",scale_" + region_C;
+                } else if (predicted_bin == region_C) {
+                    // C = A * D / B
+                    formula = "(@0*@1/@2)";
+                    parameters = "scale_" + region_A + ",scale_" + region_D + ",scale_" + region_B;
+                } else if (predicted_bin == region_D) {
+                    // D = B * C / A
+                    formula = "(@0*@1/@2)";
+                    parameters = "scale_" + region_B + ",scale_" + region_C + ",scale_" + region_A;
+                }
+                
                 cb.cp().bin({predicted_bin}).AddSyst(cb, "scale_$BIN", "rateParam", SystMapFunc<>::init
-                    ("(@0*@1/@2)", "scale_" + control_bins[0] + ",scale_" + control_bins[1] + ",scale_" + control_bins[2])
+                    (formula, parameters)
                 );
             } else {
                 // These are individual scale parameters for control regions
