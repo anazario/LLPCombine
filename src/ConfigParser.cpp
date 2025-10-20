@@ -315,11 +315,18 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
             config_.abcd.y_axis.high_cuts = GetListOrDefault(parser.lists, "y_axis.y_high.cuts");
 
             // common cuts - the original used "abcd_common_cuts" as top-level list
-            if (parser.lists.count("abcd_common_cuts")) {
-                config_.abcd.common_cuts = parser.lists.at("abcd_common_cuts");
-                Log(LOG_DEBUG, "Found " + std::to_string(config_.abcd.common_cuts.size()) + " common cuts.");
+            auto common_cuts_it = parser.lists.find("abcd_common_cuts");
+            if (common_cuts_it != parser.lists.end()) {
+                try {
+                    config_.abcd.common_cuts = common_cuts_it->second;
+                    Log(LOG_DEBUG, "Found " + std::to_string(config_.abcd.common_cuts.size()) + " common cuts.");
+                } catch (const std::exception& e) {
+                    Log(LOG_DEBUG, "Error accessing common cuts: " + std::string(e.what()));
+                    config_.abcd.common_cuts.clear();
+                }
             } else {
                 Log(LOG_DEBUG, "No abcd_common_cuts found in config");
+                config_.abcd.common_cuts.clear();
             }
 
             GenerateABCDBinsFromAxes();
