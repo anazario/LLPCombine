@@ -282,42 +282,30 @@ private:
 // ConfigParser implementation (refactored)
 // ------------------------------------------------------------
 
-ConfigParser::ConfigParser() : config_{} { SetDefaults(); }
+ConfigParser::ConfigParser() {
+    std::cout << "DEBUG: ConfigParser constructor started" << std::endl;
+    std::cout << "DEBUG: About to call SetDefaults()" << std::endl;
+    SetDefaults();
+    std::cout << "DEBUG: SetDefaults() completed" << std::endl;
+}
 ConfigParser::~ConfigParser() {}
 
 void ConfigParser::SetDefaults() {
+    std::cout << "DEBUG: SetDefaults started" << std::endl;
     config_.name = "default_analysis";
+    std::cout << "DEBUG: Set name" << std::endl;
     config_.data_as_background = false;
-    config_.apply_trigger_cuts = true;  // Enable trigger cuts by default
+    config_.apply_trigger_cuts = true;  
     config_.luminosity = 400.0;
     config_.output_json = "output.json";
     config_.output_dir = "./json/";
     config_.verbosity = 1;
     config_.parallel = false;
     config_.dry_run = false;
+    std::cout << "DEBUG: Set basic config" << std::endl;
     
-    // Initialize ABCD structure - use assignment instead of clear() to avoid corrupted memory
-    config_.abcd.use_explicit_format = false;
-    config_.abcd.formula = "(@0*@1/@2)";
-    config_.abcd.generate_datacards = true;
-    config_.abcd.predicted_region = "";
-    
-    // Use assignment to ensure vectors are properly constructed
-    config_.abcd.common_cuts = std::vector<std::string>();
-    config_.abcd.regions = std::map<std::string, std::string>();
-    
-    // Initialize axis configs with assignment
-    config_.abcd.x_axis.name = "";
-    config_.abcd.x_axis.low_desc = "";
-    config_.abcd.x_axis.high_desc = "";
-    config_.abcd.x_axis.low_cuts = std::vector<std::string>();
-    config_.abcd.x_axis.high_cuts = std::vector<std::string>();
-    
-    config_.abcd.y_axis.name = "";
-    config_.abcd.y_axis.low_desc = "";
-    config_.abcd.y_axis.high_desc = "";
-    config_.abcd.y_axis.low_cuts = std::vector<std::string>();
-    config_.abcd.y_axis.high_cuts = std::vector<std::string>();
+    // Skip ABCD initialization for now to isolate the issue
+    std::cout << "DEBUG: SetDefaults completed - skipping ABCD init" << std::endl;
 }
 
 bool ConfigParser::LoadConfig(const std::string& config_file) {
