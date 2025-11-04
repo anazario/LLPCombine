@@ -285,7 +285,7 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
   }
 	
   // Generate BF.x command and copy to clipboard
-  std::string bf_command = "./BF.x " + output_path;
+  std::string bf_command = "./BF.x " + output_path + " --predict-all";
   if (config.method == "ABCD") {
     bf_command += " " + config_file;
     if (verbosity > 1) {

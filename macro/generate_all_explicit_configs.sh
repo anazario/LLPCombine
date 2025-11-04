@@ -57,6 +57,24 @@ python3 macro/generate_explicit_abcd_config.py \
   --common-cuts '["SV_nHadronic == 1", "rjr_Rs[1] > 0.15", "rjr_Rs[1] < 0.3"]' \
   --output config/nHad_MsRs_Sxy_config3_explicit.yaml
 
+python3 macro/generate_explicit_abcd_config.py \
+  --name "nHad_MsRs_Sxy_config4" \
+  --x-low-cuts '["rjr_Ms[1] > 1000", "rjr_Ms[1] < 2000"]' \
+  --x-high-cuts '["rjr_Ms[1] > 2000", "rjr_Ms[1] < 3000"]' \
+  --y-low-cuts '["rjr_Rs[1] > 0.15", "rjr_Rs[1] < 0.3"]' \
+  --y-high-cuts '["rjr_Rs[1] > 0.3", "rjr_Rs[1] < 0.4"]' \
+  --common-cuts '["SV_nHadronic == 1", "HadronicSV_dxySig[0] > 100.0", "HadronicSV_dxySig[0] < 1000.0"]' \
+  --output config/nHad_MsRs_Sxy_config4_explicit.yaml
+
+python3 macro/generate_explicit_abcd_config.py \
+  --name "nHad_MsRs_Sxy_config5" \
+  --x-low-cuts '["rjr_Ms[1] > 1000", "rjr_Ms[1] < 2000"]' \
+  --x-high-cuts '["rjr_Ms[1] > 2000", "rjr_Ms[1] < 3000"]' \
+  --y-low-cuts '["HadronicSV_dxySig[0] > 100.0", "HadronicSV_dxySig[0] < 300.0"]' \
+  --y-high-cuts '["HadronicSV_dxySig[0] > 300.0", "HadronicSV_dxySig[0] < 1000.0"]' \
+  --common-cuts '["SV_nHadronic == 1", "rjr_Rs[1] > 0.15"]' \
+  --output config/nHad_MsRs_Sxy_config5_explicit.yaml
+
 echo ""
 echo "✅ All 5 explicit ABCD configs generated successfully!"
 echo "Generated files:"

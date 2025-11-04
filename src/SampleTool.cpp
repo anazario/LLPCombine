@@ -113,7 +113,8 @@ SampleTool::SampleTool(){
 	MasterDict["DisplacedJet18"] = { pathPrefix+"DisJet_R18_SVIPM100_v31_DisplacedJet_AOD_Run2018D_rjrskim_v38.root"};
 	MasterDict["MET18"] = { pathPrefix+"MET_R18_SVIPM100_v31_MET_AOD_Run2018A_rjrskim_v39.root",
 	                        pathPrefix+"MET_R18_SVIPM100_v31_MET_AOD_Run2018B_rjrskim_v39.root",
-	                        pathPrefix+"MET_R18_SVIPM100_v31_MET_AOD_Run2018C_rjrskim_v39.root" };
+	                        pathPrefix+"MET_R18_SVIPM100_v31_MET_AOD_Run2018C_rjrskim_v39.root",
+				pathPrefix+"MET_R18_SVIPM100_v31_MET_AOD_Run2018D_rjrskim_v39.root"};
 	
 }
 void SampleTool::LoadBkgs( stringlist& bkglist ){
