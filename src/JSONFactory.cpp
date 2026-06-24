@@ -1,5 +1,6 @@
 #include "JSONFactory.h"
 #include <set>
+#include <type_traits>
 
 namespace {
 std::string ReweightedSignalName(std::string procname, const AnalysisConfig& c){
@@ -17,6 +18,7 @@ std::string ReweightedSignalName(std::string procname, const AnalysisConfig& c){
 }
 }
 
+/*
 JSONFactory::JSONFactory(std::map<std::string, Bin*> analysisbins, const AnalysisConfig& c){
 	//loop and add bins 
 	for(const auto& it: analysisbins ){
@@ -24,7 +26,7 @@ JSONFactory::JSONFactory(std::map<std::string, Bin*> analysisbins, const Analysi
 		//std::map<std::string, Process* > bkgprocs = it.second->bkgProcs;
 		std::map<std::string, Process* > combinedprocs = it.second->combinedProcs;
 		std::map<std::string, Process* > signals = it.second->signals;
-		std::pair<std::string, Process* > data = it.second->data;
+		std::pair<std::string, Process* > data = it.second->totalData;
 		for(const auto& it2: combinedprocs ){
 			std::string procname = it2.first;
 			j[binname][procname] = { it2.second->nevents, it2.second->wnevents, it2.second->staterror };
@@ -46,7 +48,7 @@ JSONFactory::JSONFactory(std::map<std::string, Bin*> analysisbins, const Analysi
 		std::string binname = it.first;
 		std::map<std::string, Process* > combinedprocs = it.second->combinedProcs;
 		std::map<std::string, Process* > signals = it.second->signals;
-		std::pair<std::string, Process* > data = it.second->data;
+		std::pair<std::string, Process* > data = it.second->totalData;
 
 		if(!(mc_closure && background_mode == "combined")){
 			for(const auto& it2: combinedprocs ){
@@ -66,20 +68,31 @@ JSONFactory::JSONFactory(std::map<std::string, Bin*> analysisbins, const Analysi
 		}
 	}
 }
-JSONFactory::JSONFactory(std::map<std::string, Bin*> analysisbins){
+*/
+JSONFactory::JSONFactory(std::map<std::string, Bin*> analysisbins, const AnalysisConfig& c = AnalysisConfig(), bool mc_closure = false, const std::string& background_mode = ""){
 	//loop and add bins 
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		//std::map<std::string, Process* > bkgprocs = it.second->bkgProcs;
 		std::map<std::string, Process* > combinedprocs = it.second->combinedProcs;
 		std::map<std::string, Process* > signals = it.second->signals;
-		std::pair<std::string, Process* > data = it.second->data;
+		std::map<std::string, Process* > sep_data = it.second->dataProcs;
+		std::pair<std::string, Process* > data = it.second->totalData;
+		for(const auto& it2: sep_data ){
+			std::string procname = it2.first;
+			std::cout << "writing binname " << binname << " procname " << procname << std::endl;
+			j[binname][procname] = { it2.second->nevents, it2.second->wnevents, it2.second->staterror };
+		}
 		for(const auto& it2: combinedprocs ){
 			std::string procname = it2.first;
 			j[binname][procname] = { it2.second->nevents, it2.second->wnevents, it2.second->staterror };
 		}
 		for(const auto& it2: signals){
-			std::string procname = it2.first;
+			std::string procname;
+			if(c.signals.size() == 0)
+				procname = it2.first;
+			else
+				procname = ReweightedSignalName(it2.first, c);
 			j[binname][procname] = { it2.second->nevents, it2.second->wnevents, it2.second->staterror };
 		}
 		//data - if specified

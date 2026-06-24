@@ -449,7 +449,33 @@ void BuildFitInput::ConstructBkgBinObjects( countmap countResults, summap sumRes
 	}	
 	
 }
+
 void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
+	for(const auto& it: analysisbins ){
+		std::string binname = it.first;
+		analysisbins[binname]->totalData.first = "data";
+		analysisbins[binname]->totalData.second = new Process("data");
+	}
+	for( const auto& it: countResults ){
+		proc_cut_pair cutpairkey = it.first;
+		std::string procname = it.first.first;
+		std::string binname = cutpairkey.second;
+		cout << "procname " << procname << " binname " << binname << " cutpairkey " << cutpairkey.first << " " << cutpairkey.second << endl;
+		Process* thisproc = nullptr;
+		if(!_unblind && (binname.find("SR") != string::npos)){
+			thisproc = new Process( procname, 1e-12, 1e-12, sqrt(1e-12));
+		}
+		else{
+			thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+		}
+		analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+		analysisbins[binname]->totalData.second->Add(thisproc);
+
+	}
+	
+}
+/*
+void BuildFitInput::AddCombinedDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		analysisbins[binname]->data.first = "data";
@@ -474,15 +500,16 @@ void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResult
 		}
 	}
 }
+*/
 void BuildFitInput::AddMCClosureDataToBinObjects(std::map<std::string, Bin*>& analysisbins){
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
-		analysisbins[binname]->data.first = "data";
-		analysisbins[binname]->data.second = new Process("data");
+		analysisbins[binname]->totalData.first = "totalData";
+		analysisbins[binname]->totalData.second = new Process("totalData");
 		for(const auto& it2: analysisbins[binname]->combinedProcs){
-			analysisbins[binname]->data.second->Add(it2.second);
+			analysisbins[binname]->totalData.second->Add(it2.second);
 		}
-		analysisbins[binname]->data.second->FixError();
+		analysisbins[binname]->totalData.second->FixError();
 	}
 }
 void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
@@ -513,7 +540,7 @@ void BuildFitInput::PrintBins(int verbosity){
 				std::cout<<"   "<< it2.second->procname<<" "<<it2.second->nevents <<" "<<it2.second->wnevents<<" "<<it2.second->staterror<<"\n";
 			}
 			//data - if specified	
-			if(it.second->data.second != nullptr) std::cout<<"   "<< it.second->data.second->procname<<" "<<it.second->data.second->nevents <<" "<<it.second->data.second->wnevents<<" "<<it.second->data.second->staterror<<"\n";
+			if(it.second->totalData.second != nullptr) std::cout<<"   "<< it.second->totalData.second->procname<<" "<<it.second->totalData.second->nevents <<" "<<it.second->totalData.second->wnevents<<" "<<it.second->totalData.second->staterror<<"\n";
 		}
 		if(verbosity >= 1){
 			for(const auto& it2: it.second->signals){
