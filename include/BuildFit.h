@@ -90,16 +90,34 @@ class BuildFit{
 
 		string GetFitName(){ return _fitname; }
 
+		//get process for bin (includes binidx)
+		string getProcess(string crbin){
+			string crch = crbin.substr(0, crbin.size() - 2);
+			for(auto it = _abcd_ch_ass.begin(); it != _abcd_ch_ass.end(); it++){
+				string srch = it->first;
+				for(auto iit = _abcd_ch_ass[srch].begin(); iit != _abcd_ch_ass[srch].end(); iit++){
+					string proc = iit->first;
+					vector<string> crchs = _abcd_ch_ass[srch][proc];
+					if(find(crchs.begin(), crchs.end(), crch) != crchs.end())
+						return proc;
+				}
+			}
+			return _bkg_proc;
+		}
+
 	private:
 		channelmap _shape_ch_ass; //channel association for shape transfer fit
 		channelmap _shape_bin_ass; //bin associations for each channel
 		channelmap _abcd_bin_ass; //SR (key) to B, C, D (vals) for ABCD fit
-		channelmap _abcd_ch_ass; //if channels are connected between ABCD fits
+		//channelmap _abcd_ch_ass; //if channels are connected between ABCD fits
+		map<string,channelmap> _abcd_ch_ass; //maps like _abcd_ch_ass[sr_ch][proc] = {cr_bins}
 		vector<yamlSys> _systs; //extra systematics to connect channels, etc
 		ch::Categories _cats;
 		map<string, int> _invcats; 
 		bool _asimov; //sets observation to expected yields
 		bool _datadriven; //uses data as 'bkg procs'
+		bool _preserve_background_processes = false; //keeps MC backgrounds as separate Combine processes
+		bool _direct_mc_backgrounds_inserted = false;
 		std::map<std::string, float> _obs_rates;
 		std::vector<std::string> _bkgprocs;
 		std::vector<std::string> _signalDetails;
@@ -116,8 +134,8 @@ class BuildFit{
 		double getTotYield(string bin){
 			double bin_tot_yield = 0;
                         for(auto proc : _bkgprocs){
-				std::cout << "getTotYield - bin " << bin << " proc " << proc << std::endl;
-                                bin_tot_yield += GetYieldValue(bin, proc, 1, "getTotYield");
+				//std::cout << "getTotYield - bin " << bin << " proc " << proc << std::endl;
+                                bin_tot_yield += GetYieldValueOrZero(bin, proc, 1, "getTotYield");
                         }
 			return bin_tot_yield;
 		}
@@ -132,7 +150,11 @@ class BuildFit{
 		}
 
 		void sumBkgs();
+		void InsertDirectMCBackgroundProcesses();
 		double GetYieldValue(const string& bin, const string& proc, int index, const string& context) const;
+		double GetYieldValueOrZero(const string& bin, const string& proc, int index, const string& context) const;
+		std::vector<std::string> FitBackgroundProcesses() const;
+		std::vector<std::string> ExpandConfiguredProcesses(const std::vector<std::string>& configured) const;
 
 		ch::Process create_proc(string mass, string analysis, string era, string channel, string proc, pair<int, string> bininfo, bool signal, double rate){
 			ch::Process newproc;

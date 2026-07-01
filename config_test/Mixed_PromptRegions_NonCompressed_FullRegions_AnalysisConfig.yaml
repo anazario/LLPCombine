@@ -61,7 +61,7 @@ Ch5CRgeq1PhoMedIsoPrompt: &Ch5CRgeq1PhoMedIsoPrompt
 
 
 kin: &kin
-  - "((nBaseLinePhotons > 0) && (SV_nHadronic > 0) && (SV_nLeptonic == 0))"
+  - "((nBaseLinePhotons > 0) && (SV_nHadronic > 0))"
   - "(rjr_Ms[0] >= 1000) && (rjr_Rs[0] >= 0.15)"
 
 eq2b00: &eq2b00
@@ -325,21 +325,3 @@ bins:
       - *Ch6SReq2PhoTightIsoPrompt
       - *SRgeq1SVHighDxy
       - *eq2b11
-
-regions:
-  Ch5CRgeq1PhoMedIsoPromptSVLowDxy:
-    - *baseline_cuts
-    - *Cleaning
-    - *kin
-    - *noBHPhotons
-    - *noNonPromptPhotons
-    - *Ch5CRgeq1PhoMedIsoPrompt
-    - *CRgeq1SVLowDxy
-  Ch6SRgeq1PhoTightIsoPromptSVHighDxy:
-    - *baseline_cuts
-    - *Cleaning
-    - *kin
-    - *noBHPhotons
-    - *noNonPromptPhotons
-    - *Ch6SReq1PhoTightIsoPrompt
-    - *SRgeq1SVHighDxy

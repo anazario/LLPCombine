@@ -87,24 +87,29 @@ void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, doubl
 	for( unsigned int i=0; i< siglist.size(); i++){//signal keys are vector doubles (mode, mgo, mn2, mn1, ctau)
 		//std::string subkey = key+"_"+std::to_string(i);//1 file per?
 		std::string subkey = BFTool::GetSignalTokens( siglist[i]);
-		if(gSystem->AccessPathName(siglist[i].c_str())){
-			cout << "File " << siglist[i] << " not found. Skipping..." << endl;
-			return;
-		}
-
-
 		//also make the event weight branch here while we have the correct bkg file
 		int ntot{};
 		float xsec{};
 		//float sums =0.;
 		TFile* f = TFile::Open(siglist[i].c_str());
+		if(!f || f->IsZombie()){
+			cout << "Signal file " << siglist[i] << " could not be opened. Skipping..." << endl;
+			if(f) f->Close();
+			continue;
+		}
 		TTree* configTree = (TTree*)f->Get("kuSkimConfigTree");
+		if(!configTree){
+			cout << "Signal file " << siglist[i] << " has no kuSkimConfigTree. Skipping..." << endl;
+			f->Close();
+			continue;
+		}
 		configTree->SetBranchAddress("nTotEvts", &ntot);//cross section is genweight!!
 		configTree->SetBranchAddress("sCrossSection", &xsec);
 		configTree->GetEntry(0);
 		//catch for signal samples with bad weights
 		if(ntot == 0){
 			cout << "sample " << subkey << " has bad weights. Skipping..." << endl;
+			f->Close();
 			continue;
 		}
 		
@@ -444,7 +449,33 @@ void BuildFitInput::ConstructBkgBinObjects( countmap countResults, summap sumRes
 	}	
 	
 }
+
 void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
+	for(const auto& it: analysisbins ){
+		std::string binname = it.first;
+		analysisbins[binname]->totalData.first = "data";
+		analysisbins[binname]->totalData.second = new Process("data");
+	}
+	for( const auto& it: countResults ){
+		proc_cut_pair cutpairkey = it.first;
+		std::string procname = it.first.first;
+		std::string binname = cutpairkey.second;
+		cout << "procname " << procname << " binname " << binname << " cutpairkey " << cutpairkey.first << " " << cutpairkey.second << endl;
+		Process* thisproc = nullptr;
+		if(!_unblind && (binname.find("SR") != string::npos)){
+			thisproc = new Process( procname, 1e-12, 1e-12, sqrt(1e-12));
+		}
+		else{
+			thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+		}
+		analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+		analysisbins[binname]->totalData.second->Add(thisproc);
+
+	}
+	
+}
+/*
+void BuildFitInput::AddCombinedDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		analysisbins[binname]->data.first = "data";
@@ -467,6 +498,18 @@ void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResult
 			}
 
 		}
+	}
+}
+*/
+void BuildFitInput::AddMCClosureDataToBinObjects(std::map<std::string, Bin*>& analysisbins){
+	for(const auto& it: analysisbins ){
+		std::string binname = it.first;
+		analysisbins[binname]->totalData.first = "totalData";
+		analysisbins[binname]->totalData.second = new Process("totalData");
+		for(const auto& it2: analysisbins[binname]->combinedProcs){
+			analysisbins[binname]->totalData.second->Add(it2.second);
+		}
+		analysisbins[binname]->totalData.second->FixError();
 	}
 }
 void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
@@ -497,7 +540,7 @@ void BuildFitInput::PrintBins(int verbosity){
 				std::cout<<"   "<< it2.second->procname<<" "<<it2.second->nevents <<" "<<it2.second->wnevents<<" "<<it2.second->staterror<<"\n";
 			}
 			//data - if specified	
-			if(it.second->data.second != nullptr) std::cout<<"   "<< it.second->data.second->procname<<" "<<it.second->data.second->nevents <<" "<<it.second->data.second->wnevents<<" "<<it.second->data.second->staterror<<"\n";
+			if(it.second->totalData.second != nullptr) std::cout<<"   "<< it.second->totalData.second->procname<<" "<<it.second->totalData.second->nevents <<" "<<it.second->totalData.second->wnevents<<" "<<it.second->totalData.second->staterror<<"\n";
 		}
 		if(verbosity >= 1){
 			for(const auto& it2: it.second->signals){
@@ -513,5 +556,3 @@ void BuildFitInput::PrintBins(int verbosity){
 
 	
 		
-
-
