@@ -55,15 +55,21 @@ class BuildFitInput{
 	BuildFitInput();
 	void BuildRVBranch();//old skims dont have rv, need to build - this needs fixed upstream
 	void BuildScaledEvtWt(double Lumi);
-	void BuildReweights(const AnalysisConfig& c);
+
+	AnalysisConfig _cfg;
+	void SetAnalysisConfig(const AnalysisConfig& c){
+		_cfg = c;
+    }
+
+	void BuildReweights();
 
 
 	//load helpers
 	void LoadBkg_KeyValue( std::string key, stringlist bkglist, double Lumi );
 	void LoadData_KeyValue( std::string key, stringlist datalist);
-	void LoadSig_KeyValue( std::string key, stringlist siglist, double Lumi );
+	void LoadSig_KeyValue( std::string key, stringlist siglist, double Lumi);
 	
-	void LoadSig_byMap( map< std::string, stringlist>& SigDict, double Lumi );
+	void LoadSig_byMap( map< std::string, stringlist>& SigDict, double Lumi);
 	void LoadBkg_byMap( map< std::string, stringlist>& BkgDict, double Lumi );
 	void LoadData_byMap( map< std::string, stringlist>& DataDict);
 	

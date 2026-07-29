@@ -22,8 +22,24 @@ SampleTool::SampleTool(){
                             pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2450_mN1-2350_ct0p5_rjrskim.root",
                             pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2450_mN1-2400_ct0p5_rjrskim.root"};
 
+	//for backwards compatibility without specifying a year
 	MasterDict["gogoGZ10"]= {pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1300_mN1-1000_ct0p1_rjrskim.root",
-							pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1600_mN1-1000_ct0p1_rjrskim.root",
+			    pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1600_mN1-1000_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1600_mN1-500_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-2200_mN1-2100_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-2200_mN1-2150_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-2250_mN1-2150_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-2250_mN1-2200_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-1200_mN1-500_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2000_mN1-1000_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2000_mN1-1500_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2400_mN1-2300_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2400_mN1-2350_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2450_mN1-2350_ct0p1_rjrskim.root",
+                            pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2500_mN2-2450_mN1-2400_ct0p1_rjrskim.root"};
+	
+	MasterDict["gogoGZ10_22"]= {pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1300_mN1-1000_ct0p1_rjrskim.root",
+			    pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1600_mN1-1000_ct0p1_rjrskim.root",
                             pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-1600_mN1-500_ct0p1_rjrskim.root",
                             pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-2200_mN1-2100_ct0p1_rjrskim.root",
                             pathPrefix+"SMS_SVHPM100_v34p1_gogoGZ_FULLMINI_mGl-2300_mN2-2200_mN1-2150_ct0p1_rjrskim.root",
@@ -255,7 +271,7 @@ void SampleTool::LoadSigs( stringlist& siglist ){
 	// Clear any existing signal dictionary and keys
 	SigDict.clear();
 	SignalKeys.clear();
-
+	//TODO - add check that if no year is specified for signal, all years are included
 	for( long unsigned int i=0; i<siglist.size(); i++){
 		if( MasterDict.count(siglist[i]) == 0 ){
 			std::cout<<"Sig: "<<siglist[i]<<" not found ... skipping ...\n";

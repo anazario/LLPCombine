@@ -84,9 +84,31 @@ cout << "subkey " << subkey << endl;
 
 void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, double Lumi){
 	//RDF df("kuSkimTree", bkglist);
+	std::cout << "sigkey " << key << std::endl;
+
+	//use lumi dict from analysis config if lumi not specified
+	std::string yr = "";
+	if(key.find("_") != string::npos){
+		yr = key.substr(key.find("_")+1);
+	}
+	if(yr != ""){
+		if((_cfg.sigLumi.find(yr) != _cfg.sigLumi.end())){
+			std::cout << "yr " << yr << " lumi " << _cfg.sigLumi[yr] << std::endl;
+			Lumi = _cfg.sigLumi[yr];	
+		}
+		else{
+			cout << "Lumi for year " << yr << " not specified in yaml. Setting to overall luminosity " << Lumi << endl;
+		}
+	}
+	std::cout << "lumi " << Lumi << std::endl;
+	
 	for( unsigned int i=0; i< siglist.size(); i++){//signal keys are vector doubles (mode, mgo, mn2, mn1, ctau)
 		//std::string subkey = key+"_"+std::to_string(i);//1 file per?
 		std::string subkey = BFTool::GetSignalTokens( siglist[i]);
+		if(yr != "")
+			subkey += "_"+yr;
+		//std::cout << "siglist[i] " << siglist[i] << " subkey " << subkey << std::endl;
+		std::cout << "subkey " << subkey << std::endl;
 		//also make the event weight branch here while we have the correct bkg file
 		int ntot{};
 		float xsec{};
@@ -124,16 +146,15 @@ void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, doubl
             
                 //ntot = sums;
 
-		std::cout<<"calculated total ntot "<< ntot<<"\n";
+		//std::cout<<"calculated total ntot "<< ntot<<"\n";
 		double wt{};
 		wt = xsec*1000.*Lumi/((float)ntot);
 		//save the weight for error propagation later
 		sig_evtwt[subkey] = wt;
-		std::cout<<"subkey:"<< subkey<< "wt:"<<wt<<"\n";
+		//std::cout<<"subkey:"<< subkey<< "wt:"<<wt<<"\n";
 		//#auto tempdf = df.Define("evtwt", std::to_string(wt));
 		auto tempdf = df.Define("evtwt", "evtFillWgt * "+std::to_string(Lumi) );
 		auto tempdf2 = tempdf.Define("evtwt2", "evtwt*evtwt");
-
 
 		//cast to RNode with uniqueptr
 		rdf_SigDict[subkey] = std::make_unique<RNode>(tempdf2);
@@ -141,13 +162,13 @@ void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, doubl
 		
 	}
 }
-void BuildFitInput::BuildReweights(const AnalysisConfig& c){
+void BuildFitInput::BuildReweights(){
 	//this will only ever be applied to signal models
 	//build decay reweight branch
-	double Z_old = c.sampleZrate;
-	double Z_new = c.targetZrate;
-	double G_old = c.sampleGrate;
-	double G_new = c.targetGrate;
+	double Z_old = _cfg.sampleZrate;
+	double Z_new = _cfg.targetZrate;
+	double G_old = _cfg.sampleGrate;
+	double G_new = _cfg.targetGrate;
 	for (const auto& dfkey :rdf_SigDict){
 		if (Z_old != -1){
         	std::cout<<"building decay weight for key:"<< dfkey.first <<"\n";
@@ -163,8 +184,8 @@ void BuildFitInput::BuildReweights(const AnalysisConfig& c){
 		}
     }
 	
-	float tau_old = float(c.sampleLifetime);
-   	float tau_new = float(c.targetLifetime);
+	float tau_old = float(_cfg.sampleLifetime);
+   	float tau_new = float(_cfg.targetLifetime);
 	//build a reweight branch for each xa and xb lifetime, do it inefficiently by looping and replacing rdf for a then reloop and do b
 	for (const auto& dfkey :rdf_SigDict){
 		if (tau_old != -1 ){
@@ -332,6 +353,7 @@ countmap BuildFitInput::CountRegions(nodemap& filtered_df){
 	countmap countResults{};
 	for (const auto& it : filtered_df){
 		ROOT::RDF::RResultPtr<long long unsigned int> count_result = (it.second)->Count();
+//std::cout << "doing counts for " <<  it.first.first << " " << it.first.second << std::endl;
 		countResults[std::make_pair( it.first.first, it.first.second) ] = count_result;		
 	}
 	return countResults;
@@ -423,9 +445,9 @@ std::map<std::string, Process*> BuildFitInput::CombineBkgs( std::map<std::string
 		combinedBkgProcs[procname]->Add(bkgProcs[it.first]);
 		
 	}
-	for( const auto& it: combinedBkgProcs){//loop back through and sqrt the errors
-		combinedBkgProcs[it.first]->FixError();
-	}
+	//for( const auto& it: combinedBkgProcs){//loop back through and sqrt the errors
+	//	combinedBkgProcs[it.first]->FixError();
+	//}
 	return combinedBkgProcs;
 }
 
@@ -509,10 +531,11 @@ void BuildFitInput::AddMCClosureDataToBinObjects(std::map<std::string, Bin*>& an
 		for(const auto& it2: analysisbins[binname]->combinedProcs){
 			analysisbins[binname]->totalData.second->Add(it2.second);
 		}
-		analysisbins[binname]->totalData.second->FixError();
+		//analysisbins[binname]->totalData.second->FixError();
 	}
 }
 void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
+	string binnametest = "Ch10CReq1PhoTightIsoPromptBin00";
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		for( const auto& it2: countResults){
@@ -521,9 +544,27 @@ void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults
 			if( binname != cutpairkey.second ) continue;
 			std::string binname2 = it2.first.second;
 			std::string procname = it2.first.first;
+			//std::cout << "procname " << procname << std::endl;
+			//check for year - should be hardcoded as last underscore-separated entry
+			string yr = "";
+			if(std::count(procname.begin(), procname.end(), '_') > 4){
+				yr = procname.substr(procname.rfind("_")+1);
+				procname = procname.substr(0,procname.rfind("_"));
+			}
+
 			Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
-			analysisbins[binname]->signals.insert({procname, thisproc} );
+			if(procname == "gogoGZ_2300_1300_1000_10" && binname == binnametest){
+				std::cout << "yrname " << it2.first.first << " nevts " << thisproc->nevents << " wtevts " << thisproc->wnevents << " staterror " << thisproc->staterror << std::endl;
+			}
+			//check if process is already in map
+			if(analysisbins[binname]->signals.count(procname) > 0){
+				analysisbins[binname]->signals[procname]->Add( thisproc );
+			}
+			else
+				analysisbins[binname]->signals.insert({procname, thisproc} );
 		}
+		if(binname == binnametest)
+			std::cout << "total stat err for bin " << binname << " " << analysisbins[binname]->signals["gogoGZ_2300_1300_1000_10"]->staterror << std::endl;
 	}
 }
 void BuildFitInput::PrintBins(int verbosity){

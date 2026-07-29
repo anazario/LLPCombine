@@ -143,14 +143,14 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	// Initialize BuildFitInput
 	BuildFitInput* BFI = new BuildFitInput();
 	BFI->SetUnblind(options.unblind);
+	BFI->SetAnalysisConfig(cfg);
 
 	BFI->LoadData_byMap(ST->DataDict);
 	BFI->LoadBkg_byMap(ST->BkgDict, luminosity);
 	BFI->LoadSig_byMap(ST->SigDict, luminosity);
-	//BFI->BuildScaledEvtWt(luminosity);
 
 	//Load new weights for reweighting scenarios
-	BFI->BuildReweights( cfg );
+	BFI->BuildReweights();
 
 	// Create analysis bins from configuration
 	for (const auto& bin : cfg.bins) {
@@ -166,7 +166,18 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 		BFI->CreateBin(bin.name);
 	}
 
-
+	//debugging
+	//countmap countResults_S = BFI->CountRegions(BFI->sig_filtered_dataframes);
+	//summap sumResults_S = BFI->SumRegions("evtrwt", BFI->sig_filtered_dataframes);
+    	//summap errorsumResults_S = BFI->SumRegions("evtrwt2", BFI->sig_filtered_dataframes);
+	//BFI->ReportRegions(verbosity > 2 ? 1 : 0);
+    	//errormap errorResults_S = BFI->ComputeStatError(errorsumResults_S);
+	//BFI->AddSigToBinObjects(countResults_S, sumResults_S, errorResults_S, BFI->analysisbins);
+	//std::string output_path = output_dir + "/" + cfg.output_json;
+	//JSONFactory* json = new JSONFactory(BFI->analysisbins, cfg, cfg.mc_closure, cfg.mc_closure_background_mode);
+	//json->WriteJSON(output_path);
+	//return -1;
+	
 	// Book operations
 	countmap countResults = BFI->CountRegions(BFI->bkg_filtered_dataframes);
 	countmap countResults_S = BFI->CountRegions(BFI->sig_filtered_dataframes);
@@ -175,13 +186,10 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	summap sumResults = BFI->SumRegions("evtwt", BFI->bkg_filtered_dataframes);
 	summap sumResults_S = BFI->SumRegions("evtrwt", BFI->sig_filtered_dataframes);
 	summap sumResults_obs = BFI->SumRegions("evtwt", BFI->data_filtered_dataframes);
-	//summap sumResults = BFI->SumRegions("LumiEvtWt", BFI->bkg_filtered_dataframes);
-        //summap sumResults_S = BFI->SumRegions("evtFillWgt", BFI->sig_filtered_dataframes);
-        //summap sumResults_obs = BFI->SumRegions("LumiEvtWt", BFI->data_filtered_dataframes);
 
 	//new evtwt error calculation
 	summap errorsumResults = BFI->SumRegions("evtwt2", BFI->bkg_filtered_dataframes);
-    summap errorsumResults_S = BFI->SumRegions("evtrwt2", BFI->sig_filtered_dataframes);
+    	summap errorsumResults_S = BFI->SumRegions("evtrwt2", BFI->sig_filtered_dataframes);
 
 
 	//book error sums	
@@ -191,12 +199,9 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 	BFI->ReportRegions(verbosity > 2 ? 1 : 0);
 	
 	// Compute errors and report bins
-	//errormap errorResults = BFI->ComputeStatError(countResults, BFI->bkg_evtwt);
-	//errormap errorResults_S = BFI->ComputeStatError(countResults_S, BFI->sig_evtwt);
 	errormap errorResults = BFI->ComputeStatError(errorsumResults);
-    errormap errorResults_S = BFI->ComputeStatError(errorsumResults_S);
+    	errormap errorResults_S = BFI->ComputeStatError(errorsumResults_S);
 	errormap errorResults_obs = BFI->ComputeStatError(countResults_obs, BFI->data_evtwt);
-	//errormap errorResults_obs = BFI->ComputeStatError(countResults_obs, 1);
 
 
 	// Aggregate maps into more easily useable classes
@@ -301,6 +306,7 @@ int main(int argc, char* argv[]) {
 				return result;
 			}
 		}
+	
 	}
 /*	
 	// Print batch summary

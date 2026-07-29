@@ -345,7 +345,7 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
 	if ( parser.values.count("decayWeights.targetGrate")){
         config_.targetGrate = std::stod(parser.values["decayWeights.targetGrate"]);
     }    
-    
+
     // Parse samples
     if (parser.lists.count("samples.backgrounds")) {
         config_.backgrounds = parser.lists["samples.backgrounds"];
@@ -355,6 +355,39 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
     }
     if (parser.lists.count("samples.data")) {
 	config_.data = parser.lists["samples.data"];
+    }
+  
+    //get years of specified signals
+    std::vector<std::string> sigyrs;
+    for (auto sig : config_.signals){
+	if(sig.find("_") != std::string::npos)
+        	sigyrs.push_back( sig.substr(sig.find("_")+1) );
+    }
+ 
+    //parse signal lumis
+    double totsiglumi = 0;
+    for (const auto& pair : parser.values) {
+        if (pair.first.find("sampleLumis.") == 0){
+            //if want to change what the year key is or suffix is for sig_YEAR, can change that parsing here
+            std::string year = pair.first.substr(pair.first.find(".")+3);
+            //make sure year in lumikey is included in signal list
+            if(std::count(sigyrs.begin(), sigyrs.end(), year) == 0){
+                std::cout << "Signal for year " << year << " not specified. Not setting lumi." << std::endl;
+                continue; 
+            }
+            config_.sigLumi[year] = std::stod(pair.second);
+	        totsiglumi += std::stod(pair.second);		
+        }
+    }
+    //if 1+ years specified in lumi dict and 2+ years specified in signal, but their total lumi doesnt add up to the overall lumi, throw warning
+    //if no years specified, set sig lumi to overall lumi (same for only 1 year)
+    if((config_.sigLumi.size() > 0 || sigyrs.size() > 1) && totsiglumi != config_.luminosity){
+	std::string proceed;
+        std::cout << "WARNING: Set total luminosity to " << config_.luminosity << " but specified signal year-by-year luminosity is " << totsiglumi << " total." << std::endl;
+        std::cout << "Are you sure you want to proceed? y/n" << std::endl;
+        std:: cin >> proceed;
+        if(proceed != "y")
+                return false;
     }
 
     if (parser.values.count("mc_closure.enabled")) {

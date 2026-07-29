@@ -36,6 +36,8 @@ struct AnalysisConfig {
     std::vector<std::string> signals;
     std::vector<std::string> data;
 
+    std::map<std::string, double> sigLumi;	
+
     bool mc_closure;
     std::string mc_closure_background_mode;
     
