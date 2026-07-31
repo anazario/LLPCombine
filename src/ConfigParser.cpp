@@ -270,6 +270,7 @@ private:
                     }
                     
                     std::string full_key = section + (subsection.empty() ? "" : "." + subsection) + "." + key;
+                    //std::cout << "full_key " << full_key << std::endl;
                     values[full_key] = value;
                 }
             }
@@ -354,14 +355,27 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
         config_.signals = parser.lists["samples.signals"];
     }
     if (parser.lists.count("samples.data")) {
-	config_.data = parser.lists["samples.data"];
+    	config_.data = parser.lists["samples.data"];
     }
-  
+    if (parser.values.count("samples.split")) {
+    	config_.sampleSplit = parser.values["samples.split"];
+    }
+    else{
+    	config_.sampleSplit = "none";
+    }
+ 
+    //get years of specified data
+    std::vector<std::string> datayrs;
+    for(auto data : config_.data){
+        datayrs.push_back( data.substr(data.size() - 2) );
+    }
+
+ 
     //get years of specified signals
     std::vector<std::string> sigyrs;
     for (auto sig : config_.signals){
 	if(sig.find("_") != std::string::npos)
-        	sigyrs.push_back( sig.substr(sig.find("_")+1) );
+        sigyrs.push_back( sig.substr(sig.find("_")+1) );
     }
  
     //parse signal lumis
@@ -399,40 +413,67 @@ bool ConfigParser::LoadYAML(const std::string& config_file) {
                        config_.mc_closure_background_mode.begin(),
                        [](unsigned char c){ return std::tolower(c); });
     }
-    
+    //check split type for bins before making them
+    if(std::find(config_.splitTypes.begin(), config_.splitTypes.end(), config_.sampleSplit) == config_.splitTypes.end()){
+            std::cerr << "Error: sampleSplit type " << config_.sampleSplit << " is not valid. Please replace with one of the following:";
+            for(auto split : config_.splitTypes)
+                std::cerr << " " << split;
+            std::cerr << std::endl;
+            return false; 
+    }
+   
+
+    std::vector<std::string> binsplits;
+    if(config_.sampleSplit == config_.splitTypes[1]){ // year split
+        //sorting required for set intersection
+        std::sort(datayrs.begin(), datayrs.end());
+        std::sort(sigyrs.begin(), sigyrs.end());
+        std::set_intersection(datayrs.begin(), datayrs.end(), sigyrs.begin(), sigyrs.end(),std::back_inserter(binsplits));
+    }
+    else if(config_.sampleSplit == config_.splitTypes[2]){ // run split
+        binsplits = {"Run2","Run3"};
+    }
+    else{ // no split
+        binsplits.push_back("");
+    }
+ 
     // Parse bins
-    for (const auto& pair : parser.lists) {
-        if (pair.first.find("bins.") == 0) {
-            std::string full_key = pair.first;
-            std::string bin_name;
-            
-            // Extract bin name from the key
-            size_t bins_pos = full_key.find("bins.");
-            if (bins_pos != std::string::npos) {
-                std::string remainder = full_key.substr(bins_pos + 5); // Remove "bins."
-                size_t dot_pos = remainder.find('.');
+    for(auto binsplit : binsplits){
+        for (const auto& pair : parser.lists) {
+            if (pair.first.find("bins.") == 0) {
+                std::string full_key = pair.first;
+                std::string bin_name;
                 
-                if (dot_pos != std::string::npos) {
-                    // Key like "bins.single_bin.cuts" - not used in our format
-                    continue;
-                } else {
-                    // Key like "bins.single_bin" - this is our cuts list
-                    bin_name = remainder;
+                // Extract bin name from the key
+                size_t bins_pos = full_key.find("bins.");
+                if (bins_pos != std::string::npos) {
+                    std::string remainder = full_key.substr(bins_pos + 5); // Remove "bins."
+                    size_t dot_pos = remainder.find('.');
+                    
+                    if (dot_pos != std::string::npos) {
+                        // Key like "bins.single_bin.cuts" - not used in our format
+                        continue;
+                    } else {
+                        // Key like "bins.single_bin" - this is our cuts list
+                        bin_name = remainder;
+                    }
                 }
-            }
-            
-            if (!bin_name.empty()) {
-                BinConfig bin_config;
-                bin_config.name = bin_name;
-                bin_config.cuts = pair.second;
+                if(binsplit != "")
+                    bin_name += "_"+binsplit;
                 
-                // Look for description
-                std::string desc_key = "bins." + bin_name + ".description";
-                if (parser.values.count(desc_key)) {
-                    bin_config.description = parser.values[desc_key];
+                if (!bin_name.empty()) {
+                    BinConfig bin_config;
+                    bin_config.name = bin_name;
+                    bin_config.cuts = pair.second;
+                    
+                    // Look for description
+                    std::string desc_key = "bins." + bin_name + ".description";
+                    if (parser.values.count(desc_key)) {
+                        bin_config.description = parser.values[desc_key];
+                    }
+                    
+                    config_.bins.push_back(bin_config);
                 }
-                
-                config_.bins.push_back(bin_config);
             }
         }
     }

@@ -79,7 +79,10 @@ class BuildFitInput{
 	errormap ComputeStatError( countmap countResults, map< std::string, double >& evtwt ); //older method with const same evt weights
 	errormap ComputeStatError( summap sumResults);//proper way with sum of wts squared
 
-
+        std::map<std::string, std::vector<std::string>> _runyr_map = {
+                {"Run3",{"22","23","24","25"}},
+                {"Run2",{"18","17","16"}}
+        };
 	bool _unblind = false;
 	void SetUnblind(bool u){
 		_unblind = u;

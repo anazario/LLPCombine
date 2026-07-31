@@ -33,7 +33,6 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 		std::cerr << "Error: Failed to load configuration from: " << config_file << std::endl;
 		return 1;
 	}
-	
 	AnalysisConfig cfg = configParser.GetConfig();
 
 	// Override config with command-line options if provided
@@ -214,9 +213,9 @@ int ProcessSingleConfig(const std::string& config_file, const ProgramOptions& op
 		BFI->AddDataToBinObjects( countResults_obs, sumResults_obs, errorResults_obs, BFI->analysisbins);
 	}
 
-	if (verbosity > 0 && !options.batch_mode) {
-		BFI->PrintBins(verbosity > 1 ? 1 : 0);
-	}
+	//if (verbosity > 0 && !options.batch_mode) {
+	//	BFI->PrintBins(verbosity > 1 ? 1 : 0);
+	//}
 
 	// Write output JSON
 	std::string output_path = output_dir + "/" + cfg.output_json;

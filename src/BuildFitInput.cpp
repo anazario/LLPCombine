@@ -473,6 +473,7 @@ void BuildFitInput::ConstructBkgBinObjects( countmap countResults, summap sumRes
 }
 
 void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
+	//std::string binnametest = "Ch10CReq1PhoTightIsoPromptBin00";
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		analysisbins[binname]->totalData.first = "data";
@@ -482,17 +483,57 @@ void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResult
 		proc_cut_pair cutpairkey = it.first;
 		std::string procname = it.first.first;
 		std::string binname = cutpairkey.second;
-		cout << "procname " << procname << " binname " << binname << " cutpairkey " << cutpairkey.first << " " << cutpairkey.second << endl;
+		//cout << "procname " << procname << " binname " << binname << " cutpairkey " << cutpairkey.first << " " << cutpairkey.second << endl;
 		Process* thisproc = nullptr;
-		if(!_unblind && (binname.find("SR") != string::npos)){
-			thisproc = new Process( procname, 1e-12, 1e-12, sqrt(1e-12));
+		//if(binname.find(binnametest) != std::string::npos)
+		//	std::cout << "procname " << procname << " binname " << binname << std::endl;
+		std::string binname_suffix = binname.substr(binname.find("_")+1);
+		if(binname_suffix == binname){ //no splitting
+			//check if bin is sr
+			if(!_unblind && (binname.find("SR") != string::npos)){
+				thisproc = new Process( procname, 1e-12, 1e-12, 1e-12);
+			}
+			else
+				thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+			analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+			analysisbins[binname]->totalData.second->Add(thisproc);
 		}
+		//else split by run or year	
+		//check if binname suffix is a run split (map keys) or year split (map vals)
+		//if in map keys - run split, add to bin if procnname suffix in map[key]
 		else{
-			thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
-		}
-		analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
-		analysisbins[binname]->totalData.second->Add(thisproc);
+			std::string procname_yr = procname.substr(procname.size() - 2);
+			if(_runyr_map.find(binname_suffix) != _runyr_map.end()){ //run split
+				std::vector<std::string> runyrs = _runyr_map[binname_suffix];
+				//year of proc is in run for this bin - add up yields over all years for this run
+				if(std::find(runyrs.begin(), runyrs.end(), procname_yr) != runyrs.end()){
+					//remove yr info from procname to add all years into same proc for this run
+					procname = procname.substr(0,procname.rfind("_"));
+					//check if process is already in map
+					if(!_unblind && (binname.find("SR") != string::npos)){
+						thisproc = new Process( procname, 1e-12, 1e-12, 1e-12);
+					}
+					else
+						thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+					analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+					analysisbins[binname]->totalData.second->Add(thisproc);
 
+				}
+			}
+			else if(binname_suffix == procname_yr){ //yr splitting
+			//std::cout << "procname " << procname << " binname " << binname << " evts " << *countResults[cutpairkey] << " wt evts " << *sumResults[cutpairkey] << " binname_suffix " << binname_suffix << std::endl;
+				//check if process is already in map
+				if(!_unblind && (binname.find("SR") != string::npos)){
+					thisproc = new Process( procname, 1e-12, 1e-12, 1e-12);
+				}
+				else
+					thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+				analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+				analysisbins[binname]->totalData.second->Add(thisproc);
+
+			}
+			else{ }
+		}
 	}
 	
 }
@@ -535,7 +576,8 @@ void BuildFitInput::AddMCClosureDataToBinObjects(std::map<std::string, Bin*>& an
 	}
 }
 void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
-	string binnametest = "Ch10CReq1PhoTightIsoPromptBin00";
+	//string binnametest = "Ch10CReq1PhoTightIsoPromptBin00";
+
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		for( const auto& it2: countResults){
@@ -544,27 +586,60 @@ void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults
 			if( binname != cutpairkey.second ) continue;
 			std::string binname2 = it2.first.second;
 			std::string procname = it2.first.first;
-			//std::cout << "procname " << procname << std::endl;
-			//check for year - should be hardcoded as last underscore-separated entry
-			string yr = "";
-			if(std::count(procname.begin(), procname.end(), '_') > 4){
-				yr = procname.substr(procname.rfind("_")+1);
-				procname = procname.substr(0,procname.rfind("_"));
-			}
+			//if(binname.find(binnametest) != std::string::npos)
+			//	std::cout << "procname " << procname << " binname " << binname << std::endl;
+			std::string binname_suffix = binname.substr(binname.find("_")+1);
+			std::string procname_yr = procname.substr(procname.rfind("_")+1);
+			if(binname_suffix == binname){ //no splitting
+				//check for binname year - should be hardcoded as last underscore-separated entry
+				if(std::count(procname.begin(), procname.end(), '_') > 4){
+					procname = procname.substr(0,procname.rfind("_"));
+				}
 
-			Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
-			if(procname == "gogoGZ_2300_1300_1000_10" && binname == binnametest){
-				std::cout << "yrname " << it2.first.first << " nevts " << thisproc->nevents << " wtevts " << thisproc->wnevents << " staterror " << thisproc->staterror << std::endl;
+				Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+				//check if process is already in map
+				if(analysisbins[binname]->signals.count(procname) > 0){
+					analysisbins[binname]->signals[procname]->Add( thisproc );
+				}
+				else
+					analysisbins[binname]->signals.insert({procname, thisproc} );
+
 			}
-			//check if process is already in map
-			if(analysisbins[binname]->signals.count(procname) > 0){
-				analysisbins[binname]->signals[procname]->Add( thisproc );
+			//else split by run or year	
+			//check if binname suffix is a run split (map keys) or year split (map vals)
+			//if in map keys - run split, add to bin if procnname suffix in map[key]
+			else{
+				if(_runyr_map.find(binname_suffix) != _runyr_map.end()){ //run split
+					std::vector<std::string> runyrs = _runyr_map[binname_suffix];
+					//year of proc is in run for this bin - add up yields over all years for this run
+					if(std::find(runyrs.begin(), runyrs.end(), procname_yr) != runyrs.end()){
+						//remove yr info from procname to add all years into same proc for this run
+						procname = procname.substr(0,procname.rfind("_"));
+						Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+						//check if process is already in map
+						if(analysisbins[binname]->signals.count(procname) > 0){
+							analysisbins[binname]->signals[procname]->Add( thisproc );
+						}
+						else
+							analysisbins[binname]->signals.insert({procname, thisproc} );
+
+					}
+				}
+				else if(binname_suffix == procname_yr){ //yr splitting
+				//std::cout << "procname " << procname << " binname " << binname << " evts " << *countResults[cutpairkey] << " wt evts " << *sumResults[cutpairkey] << " binname_suffix " << binname_suffix << std::endl;
+					Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+					//check if process is already in map
+					if(analysisbins[binname]->signals.count(procname) > 0){
+						analysisbins[binname]->signals[procname]->Add( thisproc );
+					}
+					else
+						analysisbins[binname]->signals.insert({procname, thisproc} );
+
+				}
+				else{ }
+
 			}
-			else
-				analysisbins[binname]->signals.insert({procname, thisproc} );
 		}
-		if(binname == binnametest)
-			std::cout << "total stat err for bin " << binname << " " << analysisbins[binname]->signals["gogoGZ_2300_1300_1000_10"]->staterror << std::endl;
 	}
 }
 void BuildFitInput::PrintBins(int verbosity){
