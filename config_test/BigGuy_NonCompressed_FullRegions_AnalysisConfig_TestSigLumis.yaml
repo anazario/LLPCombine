@@ -1,19 +1,21 @@
 analysis:
   name: "BigGuy_NonCompressed_FullRegions_TestSigLumis"
-  luminosity: 101.6
+  luminosity: 140
   output_json: "BigGuy_NonCompressed_FullRegions_TestSigLumis.json"
 
 samples:
-  signals: ["gogoGZ10_22"]
-  data: ["MET18","MET22"]
-
+  signals: ["gogoGZ10_22","gogoGZ10_18","gogoGZ10_23"]
+  data: ["MET18","MET22", "MET23"] #CAUTION: there are no checks to make sure that the years in signal match the years in data (yet...)
+  split: "none" #"none", "yearSplit", or "runSplit"
     #bins:
     #  # ==== Ch1: Ge1Lep anchor (CR, dxySig < 200) ====
     #  Ch1CRGeLep100:
 #if sample lumi is provided for signal year, it will override the total lumi (even if only one year is specified)
 #if sample lumi is not provided for signal year and only one signal year is specified, then it will scale to the total lumi
-#sampleLumis:
-#  2022: 38
+sampleLumis:
+  2022: 20
+  2023: 40
+  2018: 80
 
 
 baseline_cuts: &baseline_cuts
