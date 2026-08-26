@@ -29,7 +29,7 @@ class Process{
 	void Add(Process* p){
 		nevents += p->nevents;
 		wnevents += p->wnevents;
-		staterror += p->staterror * p->staterror;
+		staterror = std::sqrt((staterror * staterror) + (p->staterror * p->staterror));
 	}
 	void FixError(){
 		staterror = std::sqrt(staterror);

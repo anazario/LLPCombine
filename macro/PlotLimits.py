@@ -378,7 +378,11 @@ def MakeCtauLimit( significance_dict, sig_label, mGo=2000, mN2 = 1500, mN1 = 500
     plt.text(0.98, 0.04, plot_sig_label, fontsize=16, ha='right', va='bottom', transform=ax.transAxes)
     if extra_text != "":
         plt.text(0.98, 0.10, extra_text, fontsize=16, ha='right', va='bottom', transform=ax.transAxes)
-    plotname = f"{oname}_{sig_label}_mGl-{mGo}_mN2-{mN2}_mN1-{mN1}_ctau1D.pdf"
+    if sig_label not in oname:
+        oname += f"_{sig_label}"
+    if f"_mGl-{mGo}_mN2-{mN2}_mN1-{mN1}" not in oname:
+        oname += f"_mGl-{mGo}_mN2-{mN2}_mN1-{mN1}"
+    plotname = f"{oname}_ctau1D.pdf"
     print("Saving plot as",plotname)
     plt.savefig(plotname)
 
@@ -469,7 +473,11 @@ def MakeCtauLimitMultipleBRs( br_dicts, sig_label, mGo=2000, mN2 = 1500, mN1 = 5
     plt.text(0.98, 0.04, plot_sig_label, fontsize=16, ha='right', va='bottom', transform=ax.transAxes)
     if extra_text != "":
         plt.text(0.98, 0.10, extra_text, fontsize=16, ha='right', va='bottom', transform=ax.transAxes)
-    plotname = f"{oname}_{sig_label}_mGl-{mGo}_mN2-{mN2}_mN1-{mN1}_ctau1DMultipleBRs.pdf"
+    if sig_label not in oname:
+        oname += f"_{sig_label}"
+    if f"_mGl-{mGo}_mN2-{mN2}_mN1-{mN1}" not in oname:
+        oname += f"_mGl-{mGo}_mN2-{mN2}_mN1-{mN1}"
+    plotname = f"{oname}_ctau1DMultipleBRs.pdf"
     print("Saving plot as",plotname)
     
     plt.savefig(plotname)
