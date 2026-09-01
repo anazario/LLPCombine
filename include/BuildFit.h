@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <stdexcept>
 #include <yaml-cpp/yaml.h>
@@ -129,6 +130,10 @@ class BuildFit{
 		string _signalPoint;
 		map<string, string> _shape_anchor_bins;
 		string _bkg_proc = "bkg";
+		bool _rateparam_railguard_enabled = true;
+		double _rateparam_railguard_min = 1.0e-6;
+		double _rateparam_railguard_max = 10000.0;
+		bool _rateparam_floor_zero_init = true;
 
 		//get total yield over all processes for a given bin
 		double getTotYield(string bin){
@@ -155,6 +160,10 @@ class BuildFit{
 		double GetYieldValueOrZero(const string& bin, const string& proc, int index, const string& context) const;
 		std::vector<std::string> FitBackgroundProcesses() const;
 		std::vector<std::string> ExpandConfiguredProcesses(const std::vector<std::string>& configured) const;
+		double GuardRateParamInit(double value) const;
+		std::string ResolveRateParamName(const std::string& name, const std::string& bin, const std::string& proc) const;
+		void SetRateParamRange(const std::string& name, const std::vector<std::string>& bins, const std::vector<std::string>& procs);
+		void AddRateParam(const std::vector<std::string>& procs, const std::vector<std::string>& bins, const std::string& name, double init);
 
 		ch::Process create_proc(string mass, string analysis, string era, string channel, string proc, pair<int, string> bininfo, bool signal, double rate){
 			ch::Process newproc;
