@@ -110,7 +110,9 @@ void BuildFit::SetRateParamRange(const std::string& name, const std::vector<std:
 			std::string resolved = ResolveRateParamName(name, bin, proc);
 			if(!ranged_params.insert(resolved).second)
 				continue;
+
 			cb.CreateParameterIfEmpty(resolved);
+
 			ch::Parameter* param = cb.GetParameter(resolved);
 			if(param)
 				param->set_range(_rateparam_railguard_min, _rateparam_railguard_max);
