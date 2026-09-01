@@ -84,9 +84,31 @@ cout << "subkey " << subkey << endl;
 
 void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, double Lumi){
 	//RDF df("kuSkimTree", bkglist);
+	std::cout << "sigkey " << key << std::endl;
+
+	//use lumi dict from analysis config if lumi not specified
+	std::string yr = "";
+	if(key.find("_") != string::npos){
+		yr = key.substr(key.find("_")+1);
+	}
+	if(yr != ""){
+		if((_cfg.sigLumi.find(yr) != _cfg.sigLumi.end())){
+			std::cout << "yr " << yr << " lumi " << _cfg.sigLumi[yr] << std::endl;
+			Lumi = _cfg.sigLumi[yr];	
+		}
+		else{
+			cout << "Lumi for year " << yr << " not specified in yaml. Setting to overall luminosity " << Lumi << endl;
+		}
+	}
+	std::cout << "lumi " << Lumi << std::endl;
+	
 	for( unsigned int i=0; i< siglist.size(); i++){//signal keys are vector doubles (mode, mgo, mn2, mn1, ctau)
 		//std::string subkey = key+"_"+std::to_string(i);//1 file per?
 		std::string subkey = BFTool::GetSignalTokens( siglist[i]);
+		if(yr != "")
+			subkey += "_"+yr;
+		//std::cout << "siglist[i] " << siglist[i] << " subkey " << subkey << std::endl;
+		std::cout << "subkey " << subkey << std::endl;
 		//also make the event weight branch here while we have the correct bkg file
 		int ntot{};
 		float xsec{};
@@ -124,16 +146,15 @@ void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, doubl
             
                 //ntot = sums;
 
-		std::cout<<"calculated total ntot "<< ntot<<"\n";
+		//std::cout<<"calculated total ntot "<< ntot<<"\n";
 		double wt{};
 		wt = xsec*1000.*Lumi/((float)ntot);
 		//save the weight for error propagation later
 		sig_evtwt[subkey] = wt;
-		std::cout<<"subkey:"<< subkey<< "wt:"<<wt<<"\n";
+		//std::cout<<"subkey:"<< subkey<< "wt:"<<wt<<"\n";
 		//#auto tempdf = df.Define("evtwt", std::to_string(wt));
 		auto tempdf = df.Define("evtwt", "evtFillWgt * "+std::to_string(Lumi) );
 		auto tempdf2 = tempdf.Define("evtwt2", "evtwt*evtwt");
-
 
 		//cast to RNode with uniqueptr
 		rdf_SigDict[subkey] = std::make_unique<RNode>(tempdf2);
@@ -141,13 +162,13 @@ void BuildFitInput::LoadSig_KeyValue( std::string key, stringlist siglist, doubl
 		
 	}
 }
-void BuildFitInput::BuildReweights(const AnalysisConfig& c){
+void BuildFitInput::BuildReweights(){
 	//this will only ever be applied to signal models
 	//build decay reweight branch
-	double Z_old = c.sampleZrate;
-	double Z_new = c.targetZrate;
-	double G_old = c.sampleGrate;
-	double G_new = c.targetGrate;
+	double Z_old = _cfg.sampleZrate;
+	double Z_new = _cfg.targetZrate;
+	double G_old = _cfg.sampleGrate;
+	double G_new = _cfg.targetGrate;
 	for (const auto& dfkey :rdf_SigDict){
 		if (Z_old != -1){
         	std::cout<<"building decay weight for key:"<< dfkey.first <<"\n";
@@ -163,8 +184,8 @@ void BuildFitInput::BuildReweights(const AnalysisConfig& c){
 		}
     }
 	
-	float tau_old = float(c.sampleLifetime);
-   	float tau_new = float(c.targetLifetime);
+	float tau_old = float(_cfg.sampleLifetime);
+   	float tau_new = float(_cfg.targetLifetime);
 	//build a reweight branch for each xa and xb lifetime, do it inefficiently by looping and replacing rdf for a then reloop and do b
 	for (const auto& dfkey :rdf_SigDict){
 		if (tau_old != -1 ){
@@ -332,6 +353,7 @@ countmap BuildFitInput::CountRegions(nodemap& filtered_df){
 	countmap countResults{};
 	for (const auto& it : filtered_df){
 		ROOT::RDF::RResultPtr<long long unsigned int> count_result = (it.second)->Count();
+//std::cout << "doing counts for " <<  it.first.first << " " << it.first.second << std::endl;
 		countResults[std::make_pair( it.first.first, it.first.second) ] = count_result;		
 	}
 	return countResults;
@@ -423,9 +445,9 @@ std::map<std::string, Process*> BuildFitInput::CombineBkgs( std::map<std::string
 		combinedBkgProcs[procname]->Add(bkgProcs[it.first]);
 		
 	}
-	for( const auto& it: combinedBkgProcs){//loop back through and sqrt the errors
-		combinedBkgProcs[it.first]->FixError();
-	}
+	//for( const auto& it: combinedBkgProcs){//loop back through and sqrt the errors
+	//	combinedBkgProcs[it.first]->FixError();
+	//}
 	return combinedBkgProcs;
 }
 
@@ -451,6 +473,7 @@ void BuildFitInput::ConstructBkgBinObjects( countmap countResults, summap sumRes
 }
 
 void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
+	//std::string binnametest = "Ch10CReq1PhoTightIsoPromptBin00";
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		analysisbins[binname]->totalData.first = "data";
@@ -460,17 +483,57 @@ void BuildFitInput::AddDataToBinObjects( countmap countResults, summap sumResult
 		proc_cut_pair cutpairkey = it.first;
 		std::string procname = it.first.first;
 		std::string binname = cutpairkey.second;
-		cout << "procname " << procname << " binname " << binname << " cutpairkey " << cutpairkey.first << " " << cutpairkey.second << endl;
+		//cout << "procname " << procname << " binname " << binname << " cutpairkey " << cutpairkey.first << " " << cutpairkey.second << endl;
 		Process* thisproc = nullptr;
-		if(!_unblind && (binname.find("SR") != string::npos)){
-			thisproc = new Process( procname, 1e-12, 1e-12, sqrt(1e-12));
+		//if(binname.find(binnametest) != std::string::npos)
+		//	std::cout << "procname " << procname << " binname " << binname << std::endl;
+		std::string binname_suffix = binname.substr(binname.find("_")+1);
+		if(binname_suffix == binname){ //no splitting
+			//check if bin is sr
+			if(!_unblind && (binname.find("SR") != string::npos)){
+				thisproc = new Process( procname, 1e-12, 1e-12, 1e-12);
+			}
+			else
+				thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+			analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+			analysisbins[binname]->totalData.second->Add(thisproc);
 		}
+		//else split by run or year	
+		//check if binname suffix is a run split (map keys) or year split (map vals)
+		//if in map keys - run split, add to bin if procnname suffix in map[key]
 		else{
-			thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
-		}
-		analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
-		analysisbins[binname]->totalData.second->Add(thisproc);
+			std::string procname_yr = procname.substr(procname.size() - 2);
+			if(_runyr_map.find(binname_suffix) != _runyr_map.end()){ //run split
+				std::vector<std::string> runyrs = _runyr_map[binname_suffix];
+				//year of proc is in run for this bin - add up yields over all years for this run
+				if(std::find(runyrs.begin(), runyrs.end(), procname_yr) != runyrs.end()){
+					//remove yr info from procname to add all years into same proc for this run
+					procname = procname.substr(0,procname.rfind("_"));
+					//check if process is already in map
+					if(!_unblind && (binname.find("SR") != string::npos)){
+						thisproc = new Process( procname, 1e-12, 1e-12, 1e-12);
+					}
+					else
+						thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+					analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+					analysisbins[binname]->totalData.second->Add(thisproc);
 
+				}
+			}
+			else if(binname_suffix == procname_yr){ //yr splitting
+			//std::cout << "procname " << procname << " binname " << binname << " evts " << *countResults[cutpairkey] << " wt evts " << *sumResults[cutpairkey] << " binname_suffix " << binname_suffix << std::endl;
+				//check if process is already in map
+				if(!_unblind && (binname.find("SR") != string::npos)){
+					thisproc = new Process( procname, 1e-12, 1e-12, 1e-12);
+				}
+				else
+					thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+				analysisbins[ binname ]->dataProcs.insert({procname, thisproc} ); 
+				analysisbins[binname]->totalData.second->Add(thisproc);
+
+			}
+			else{ }
+		}
 	}
 	
 }
@@ -509,10 +572,12 @@ void BuildFitInput::AddMCClosureDataToBinObjects(std::map<std::string, Bin*>& an
 		for(const auto& it2: analysisbins[binname]->combinedProcs){
 			analysisbins[binname]->totalData.second->Add(it2.second);
 		}
-		analysisbins[binname]->totalData.second->FixError();
+		//analysisbins[binname]->totalData.second->FixError();
 	}
 }
 void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins){
+	//string binnametest = "Ch10CReq1PhoTightIsoPromptBin00";
+
 	for(const auto& it: analysisbins ){
 		std::string binname = it.first;
 		for( const auto& it2: countResults){
@@ -521,8 +586,59 @@ void BuildFitInput::AddSigToBinObjects( countmap countResults, summap sumResults
 			if( binname != cutpairkey.second ) continue;
 			std::string binname2 = it2.first.second;
 			std::string procname = it2.first.first;
-			Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
-			analysisbins[binname]->signals.insert({procname, thisproc} );
+			//if(binname.find(binnametest) != std::string::npos)
+			//	std::cout << "procname " << procname << " binname " << binname << std::endl;
+			std::string binname_suffix = binname.substr(binname.find("_")+1);
+			std::string procname_yr = procname.substr(procname.rfind("_")+1);
+			if(binname_suffix == binname){ //no splitting
+				//check for binname year - should be hardcoded as last underscore-separated entry
+				if(std::count(procname.begin(), procname.end(), '_') > 4){
+					procname = procname.substr(0,procname.rfind("_"));
+				}
+
+				Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+				//check if process is already in map
+				if(analysisbins[binname]->signals.count(procname) > 0){
+					analysisbins[binname]->signals[procname]->Add( thisproc );
+				}
+				else
+					analysisbins[binname]->signals.insert({procname, thisproc} );
+
+			}
+			//else split by run or year	
+			//check if binname suffix is a run split (map keys) or year split (map vals)
+			//if in map keys - run split, add to bin if procnname suffix in map[key]
+			else{
+				if(_runyr_map.find(binname_suffix) != _runyr_map.end()){ //run split
+					std::vector<std::string> runyrs = _runyr_map[binname_suffix];
+					//year of proc is in run for this bin - add up yields over all years for this run
+					if(std::find(runyrs.begin(), runyrs.end(), procname_yr) != runyrs.end()){
+						//remove yr info from procname to add all years into same proc for this run
+						procname = procname.substr(0,procname.rfind("_"));
+						Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+						//check if process is already in map
+						if(analysisbins[binname]->signals.count(procname) > 0){
+							analysisbins[binname]->signals[procname]->Add( thisproc );
+						}
+						else
+							analysisbins[binname]->signals.insert({procname, thisproc} );
+
+					}
+				}
+				else if(binname_suffix == procname_yr){ //yr splitting
+				//std::cout << "procname " << procname << " binname " << binname << " evts " << *countResults[cutpairkey] << " wt evts " << *sumResults[cutpairkey] << " binname_suffix " << binname_suffix << std::endl;
+					Process* thisproc = new Process( procname, *countResults[cutpairkey], *sumResults[cutpairkey], errorResults[cutpairkey]);
+					//check if process is already in map
+					if(analysisbins[binname]->signals.count(procname) > 0){
+						analysisbins[binname]->signals[procname]->Add( thisproc );
+					}
+					else
+						analysisbins[binname]->signals.insert({procname, thisproc} );
+
+				}
+				else{ }
+
+			}
 		}
 	}
 }
