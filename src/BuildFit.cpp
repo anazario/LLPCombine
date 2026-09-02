@@ -598,6 +598,7 @@ void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, string pr
 	ch::Categories cats_abcd;
 	BuildCatsSubset(_bins_superset_abcd, cats_abcd);
 	double totint_srcch, totint_targetch;
+	double tf = 1e9;
 	for(auto c : cats_abcd){
 		if(c.second.find(target_ch) != string::npos){
 			if(proc == "")
@@ -605,24 +606,29 @@ void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, string pr
 			//cout << "2 - cat " << c.second << " gets proc " << proc << " from src " << src_ch+"00" << endl;
 			cb.AddProcesses(   {"*"}, {_signalDetails[0]}, {"13.6TeV"}, {_signalDetails[1]}, {proc}, {c}, false);
 			string binidx = getBinIdx(c.second);
-			if(binidx == "11"){
-				totint_srcch += GetYieldValue(src_ch+binidx, _bkg_proc,1,"AddTemplateProcess rate");
-				totint_targetch += GetYieldValue(c.second, _bkg_proc, 1, "AddTemplateProcess rate");
-			}
+			double srcch_yield = GetYieldValue(src_ch+binidx, _bkg_proc,1,"AddTemplateProcess rate");
+			double targetch_yield = GetYieldValue(c.second, _bkg_proc, 1, "AddTemplateProcess rate");
+			totint_srcch += srcch_yield;
+			totint_targetch += targetch_yield;
+			if(targetch_yield / srcch_yield < tf) //take min ratio between src and target ch bins
+				tf = targetch_yield / srcch_yield;
+				
+			//cout << "bin " << binidx << " src " << src_ch << " yield " << GetYieldValue(src_ch+binidx, _bkg_proc,1,"AddTemplateProcess rate") << endl;
+			//cout << "bin " << binidx << " target " << target_ch << " yield " << GetYieldValue(c.second, _bkg_proc,1,"AddTemplateProcess rate") << endl;
 		}
 	}
-	double tf = 1.;//totint_targetch/totint_srcch; 
-cout << "total src ch " << totint_srcch << " total target ch " << totint_targetch << " tf " << tf << endl;
+	//tf = totint_targetch/totint_srcch;
+//cout << "total src ch " << totint_srcch << " total target ch " << totint_targetch << " tf " << tf << endl;
 	vector<string> systbins;
         cb.ForEachProc([&](ch::Process *x){
 		if(x->process() != proc) return;
 		if(x->bin().find(target_ch) == string::npos) return;
 		//only do for bins in ABCD region
 		if(find(_bins_superset_abcd.begin(), _bins_superset_abcd.end(), x->bin()) == _bins_superset_abcd.end()) return;
-		cout << "addtemplateprocess setting rate for bin " << x->bin() << " proc " << x->process(); 
+		//cout << "addtemplateprocess setting rate for bin " << x->bin() << " proc " << x->process(); 
 		string binidx = getBinIdx(x->bin());
 		double srcch_rate = GetYieldValue(src_ch+binidx, _bkg_proc, 1, "BuildABCDFit CR rate");
-		cout << " to " << srcch_rate << endl;
+		//cout << " to " << srcch_rate << endl;
             	x->set_rate(srcch_rate);
 		systbins.push_back(target_ch+binidx);
         });
@@ -656,46 +662,47 @@ cout << "total src ch " << totint_srcch << " total target ch " << totint_targetc
 							cr_bins_matchidx.push_back(cr_bin);
 						}
 					}
-					cout << "unedited cr obs for process " << pit->first << endl;
-					for(auto cr_ch : cr_bins_matchidx)
-						cout << cr_ch << ": " << _obs_rates[cr_ch][pit->first] << endl;
+					//cout << "unedited cr obs for process " << pit->first << endl;
+					//for(auto cr_ch : cr_bins_matchidx)
+					//	cout << cr_ch << ": " << _obs_rates[cr_ch][pit->first] << endl;
 					//get yields for nominal, existing processes in ABCD CRs	
 					vector<double> cr_yields = {SumObs(cr_bins_matchidx[0]), SumObs(cr_bins_matchidx[1]), SumObs(cr_bins_matchidx[2])};
-					cout << "unedited total cr_yields" << endl;
-					for(auto y : cr_yields)
-						cout << y << endl;
+					//cout << "unedited total cr_yields" << endl;
+					//for(auto y : cr_yields)
+					//	cout << y << endl;
 					//subtract predicted src_ch yield from corresponding target_ch
 					double pred_template_rate = double(int(tf*GetYieldValue(src_ch+binidx, _bkg_proc, 1, "BuildABCDFit CR rate")));
 					cr_yields[targetcrch_idx] = double(int(cr_yields[targetcrch_idx] - pred_template_rate));
 					//update overall yield for target ch by subtracting out even contribution from every other process
 					_obs_rates[target_ch+binidx][proc] = pred_template_rate;
-					cout << "subtract value " << double(int(pred_template_rate/(_obs_rates[target_ch+binidx].size()-1))) << " obs_rates size " << _obs_rates[target_ch+binidx].size() << endl;
+					//cout << "subtract value " << double(int(pred_template_rate/(_obs_rates[target_ch+binidx].size()-1))) << " obs_rates size " << _obs_rates[target_ch+binidx].size() << endl;
 					_obs_rates[target_ch+binidx][pit->first] -= double(int(pred_template_rate/(_obs_rates[target_ch+binidx].size()-1)));
 					double predbkg_yield = double(int(cr_yields[0] * (cr_yields[1] / cr_yields[2])));
 
-					cout << "subtracting contribution " << pred_template_rate << " from bin " << target_ch+binidx << endl;
+					//cout << "subtracting contribution " << pred_template_rate << " from bin " << target_ch+binidx << endl;
 
-					cout << "edited cr obs for process " << pit->first << endl;
-					for(auto cr_ch : cr_bins_matchidx)
-						cout << cr_ch << ": " << _obs_rates[cr_ch][pit->first] << endl;
-					cout << "nominal cr obs for process " << proc << endl;
-					for(auto cr_ch : cr_bins_matchidx)
-						cout << cr_ch << ": " << _obs_rates[cr_ch][proc] << endl;
-					cout << "edited cr obs for process " << pit->first << endl;
-					for(auto y : cr_yields)
-						cout << y << endl;
+					//cout << "edited cr obs for process " << pit->first << endl;
+					//for(auto cr_ch : cr_bins_matchidx)
+					//	cout << cr_ch << ": " << _obs_rates[cr_ch][pit->first] << endl;
+					//cout << "nominal cr obs for process " << proc << endl;
+					//for(auto cr_ch : cr_bins_matchidx)
+					//	cout << cr_ch << ": " << _obs_rates[cr_ch][proc] << endl;
+					//cout << "edited cr obs for process " << pit->first << endl;
+					//for(auto y : cr_yields)
+					//	cout << y << endl;
 					//pit->first is the process to edit, proc is the process that was added 
 					_obs_rates[sr_bin][pit->first] = predbkg_yield;
 					cout << "editing obs in signal ABCD bin " << sr_bin <<  " from CRs " <<  cr_bins_matchidx[0] << ", " << cr_bins_matchidx[1] << ", " << cr_bins_matchidx[2] << " for total contribution " << predbkg_yield << endl;
-				       cout << " this contribution " << predbkg_yield << " final total " << SumObs(sr_bin) << endl;
+				        cout << " this contribution " << predbkg_yield << " final total " << SumObs(sr_bin) << endl;
 					cr_bins_matchidx.clear();	
 				}
 			}
 		}
 	}
 	//add rate param here only for given proc with a set range (not sure how to do this with Systematic functions in CombineHarvester, so it's going in by hand
-cout << " adding rateparam for proc " << proc << " and first systbin " << systbins[0] << endl;
-	cb.cp().process({proc}).bin({systbins}).AddSyst(cb, "scale_"+target_ch+"_$PROCESS", "rateParam", SystMap<bin>::init(systbins, tf));
+//cout << " adding rateparam for proc " << proc << " and first systbin " << systbins[0] << endl;
+	AddRateParam({proc}, {systbins}, "scale_"+target_ch+"_$PROCESS", tf);
+	//cb.cp().process({proc}).bin({systbins}).AddSyst(cb, "scale_"+target_ch+"_$PROCESS", "rateParam", SystMap<bin>::init(systbins, tf));
 	//cb.AddDatacardLineAtEnd("scale_"+target_ch+"_"+proc+" rateParam  "+target_ch+"* "+proc+"  "+std::to_string(-totint_targetch/totint_srcch)+" ["+std::to_string(-totint_targetch)+",0]");
 
 }
