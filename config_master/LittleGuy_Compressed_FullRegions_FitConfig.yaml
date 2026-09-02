@@ -12,16 +12,14 @@
 #   BH       C (early) | B (late)
 #   such that A = B*C/D
 
-fitname: "LittleGuy_Compressed_FullRegions_Validation"
-asimov: False
+fitname: "LittleGuy_Compressed_FullRegions"
+asimov: True
 datadriven: True
 
 # ── Shape transfer: Ch 1, Ch 3, Ch 5 ────────────────────────────────────────
 
 shape_transfer_fit:
-  anchor_bin: "00"
   bin_association:
-
     # Ch 1 — anchor CR
     SVonly_AnchorCR:
       - "SVonly_AnchorCR00"
@@ -66,48 +64,47 @@ shape_transfer_fit:
       - "MixPrompt_SR"
 
 # ── ABCD: Ch 2 and Ch 4 ──────────────────────────────────────────────────────
-
+### need SR/CR in channel names because they need to match the bin names since thats how the CombineHarvester categories are built
 ABCD_fit:
   bin_association:
-
     # Ch 2 — delayed photon (2 RISR bins per cell)
-    DelPho_BHEarly:
+    DelPho_BHEarlyCR:
       - "DelPho_BHEarlyCR00"
       - "DelPho_BHEarlyCR10"
-    DelPho_BHLate:
+    DelPho_BHLateCR:
       - "DelPho_BHLateCR00"
       - "DelPho_BHLateCR10"
-    DelPho_NotBHEarly:
+    DelPho_NotBHEarlyCR:
       - "DelPho_NotBHEarlyCR00"
       - "DelPho_NotBHEarlyCR10"
-    DelPho_NotBHLate:
+    DelPho_NotBHLateSR:
       - "DelPho_NotBHLateSR00"
       - "DelPho_NotBHLateSR10"
 
     # Ch 4 — mixed delayed photon + incl. SV (2 RISR bins per cell)
-    MixDel_BHEarly:
+    MixDel_BHEarlyCR:
       - "MixDel_BHEarlyCR00"
       - "MixDel_BHEarlyCR10"
-    MixDel_BHLate:
+    MixDel_BHLateCR:
       - "MixDel_BHLateCR00"
       - "MixDel_BHLateCR10"
-    MixDel_NotBHEarly:
+    MixDel_NotBHEarlyCR:
       - "MixDel_NotBHEarlyCR00"
       - "MixDel_NotBHEarlyCR10"
-    MixDel_NotBHLate:
+    MixDel_NotBHLateSR:
       - "MixDel_NotBHLateSR00"
       - "MixDel_NotBHLateSR10"
 
   channel_association:
-    # A = B*C/D: SR (notBH late) predicted by [BH late, BH early, notBH early]
-    DelPho_NotBHLate:
-      - "DelPho_BHLate"
-      - "DelPho_BHEarly"
-      - "DelPho_NotBHEarly"
-    MixDel_NotBHLate:
-      - "MixDel_BHLate"
-      - "MixDel_BHEarly"
-      - "MixDel_NotBHEarly"
+    # A = B*C/D: SR (notBH late) predicted by [BH late, notBH early, BH early]
+    DelPho_NotBHLateSR:
+      - "DelPho_BHLateCR"
+      - "DelPho_NotBHEarlyCR"
+      - "DelPho_BHEarlyCR"
+    MixDel_NotBHLateSR:
+      - "MixDel_BHLateCR"
+      - "MixDel_NotBHEarlyCR"
+      - "MixDel_BHEarlyCR"
 
 # ── Systematics ──────────────────────────────────────────────────────────────
 
