@@ -65,6 +65,17 @@ class BuildFit{
 		void BuildABCDFit();
 		void DoSystematics();
 		void WriteDatacard(string datacard_dir, bool verbose = false);
+		double SumObs(const string& bin){
+			double obs = 0;
+                	for(auto it = _obs_rates[bin].begin(); it != _obs_rates[bin].end(); it++){
+				//skip processes that don't contribute to this bin
+				if(it->second < 1e-10)
+					continue;
+				std::cout << "SumObs - bin " << bin << " proc " << it->first << " yield " << it->second << std::endl;	
+                        	obs += it->second;
+			}
+			return obs;
+		}
 
 		ch::Categories BuildCats(JSONFactory* j);
 		void BuildCatsSubset(std::set<string> categories, ch::Categories& retcats); //returns subset of cats from overall _cats
@@ -84,6 +95,8 @@ class BuildFit{
 		void Build9binFitMC(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
 		void Build9binFitData(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
 		void BuildMultiChannel9bin(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
+
+		void AddTemplateProcessABCD(string src_ch, string target_ch, string proc = "");
 
 		std::vector<std::string> sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
 		std::vector<std::string> datakeys = { "MET18", "DisplacedJet18", "data", "MET23"};
@@ -118,7 +131,8 @@ class BuildFit{
 		bool _datadriven; //uses data as 'bkg procs'
 		bool _preserve_background_processes = false; //keeps MC backgrounds as separate Combine processes
 		bool _direct_mc_backgrounds_inserted = false;
-		std::map<std::string, float> _obs_rates;
+		//std::map<std::string, float> _obs_rates;
+		std::map<string, std::map<string, float>> _obs_rates; //map for obs_rates[bin][proc] 
 		std::vector<std::string> _bkgprocs;
 		std::vector<std::string> _signalDetails;
 		json _yields;
