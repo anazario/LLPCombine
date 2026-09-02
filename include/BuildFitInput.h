@@ -109,5 +109,22 @@ class BuildFitInput{
 	void AddCombinedDataToBinObjects( countmap countResults, summap sumResults, errormap errorResults, std::map<std::string, Bin*>& analysisbins);
 	void AddMCClosureDataToBinObjects(std::map<std::string, Bin*>& analysisbins);
 	void PrintBins(int verbosity=1);
+
+	private:
+	enum class BinSplitMode { Inclusive, Run, Year };
+	struct BinSplitInfo{
+		BinSplitMode mode = BinSplitMode::Inclusive;
+		std::string suffix{};
+		BinSplitInfo() = default;
+		BinSplitInfo(BinSplitMode m, const std::string& s) : mode(m), suffix(s) {}
+	};
+
+	bool IsKnownYearToken(const std::string& token) const;
+	BinSplitInfo ResolveBinSplit(const std::string& binname) const;
+	std::string DataYearToken(const std::string& procname) const;
+	std::string SignalYearToken(const std::string& procname) const;
+	std::string StripSignalYearToken(const std::string& procname, const std::string& proc_year) const;
+	bool ShouldAddProcessToBin(const BinSplitInfo& split, const std::string& proc_year) const;
+	void AddOrMergeProcess(std::map<std::string, Process*>& processes, Process* proc) const;
 };
 #endif

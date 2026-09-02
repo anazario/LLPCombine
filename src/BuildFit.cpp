@@ -1,4 +1,5 @@
 #include "BuildFit.h"
+#include <cmath>
 #include <iostream>
 #include <filesystem>
 #include <sstream>
@@ -77,6 +78,54 @@ std::vector<std::string> BuildFit::ExpandConfiguredProcesses(const std::vector<s
 	return procs;
 }
 
+double BuildFit::GuardRateParamInit(double value) const{
+	if(!_rateparam_railguard_enabled)
+		return value;
+	if(_rateparam_floor_zero_init && (!std::isfinite(value) || value <= _rateparam_railguard_min))
+		return _rateparam_railguard_min;
+	return value;
+}
+
+std::string BuildFit::ResolveRateParamName(const std::string& name, const std::string& bin, const std::string& proc) const{
+	std::string resolved = name;
+	std::size_t pos = 0;
+	while((pos = resolved.find("$BIN", pos)) != std::string::npos){
+		resolved.replace(pos, 4, bin);
+		pos += bin.size();
+	}
+	pos = 0;
+	while((pos = resolved.find("$PROCESS", pos)) != std::string::npos){
+		resolved.replace(pos, 8, proc);
+		pos += proc.size();
+	}
+	return resolved;
+}
+
+void BuildFit::SetRateParamRange(const std::string& name, const std::vector<std::string>& bins, const std::vector<std::string>& procs){
+	if(!_rateparam_railguard_enabled)
+		return;
+	std::set<std::string> ranged_params;
+	for(auto bin : bins){
+		for(auto proc : procs){
+			std::string resolved = ResolveRateParamName(name, bin, proc);
+			if(!ranged_params.insert(resolved).second)
+				continue;
+			ch::Parameter* param = cb.GetParameter(resolved);
+			if(param)
+				param->set_range(_rateparam_railguard_min, _rateparam_railguard_max);
+		}
+	}
+}
+
+void BuildFit::AddRateParam(const std::vector<std::string>& procs, const std::vector<std::string>& bins, const std::string& name, double init){
+	double guarded_init = GuardRateParamInit(init);
+	if(name.find("$BIN") != std::string::npos)
+		cb.cp().process(procs).bin(bins).AddSyst(cb, name, "rateParam", SystMap<bin>::init(bins, guarded_init));
+	else
+		cb.cp().process(procs).bin(bins).AddSyst(cb, name, "rateParam", SystMap<>::init(guarded_init));
+	SetRateParamRange(name, bins, procs);
+}
+
 void BuildFit::InsertDirectMCBackgroundProcesses(){
 	if(_direct_mc_backgrounds_inserted)
 		return;
@@ -108,6 +157,29 @@ BuildFit::BuildFit(string infile){
 	YAML::Node base = YAML::LoadFile(infile);
 	if(base["fitname"])
 		_fitname = base["fitname"].as<string>();
+	if(base["rateparam_railguard"]){
+		YAML::Node guard = base["rateparam_railguard"];
+		if(guard["enabled"])
+			_rateparam_railguard_enabled = guard["enabled"].as<bool>();
+		if(guard["min"])
+			_rateparam_railguard_min = guard["min"].as<double>();
+		if(guard["max"])
+			_rateparam_railguard_max = guard["max"].as<double>();
+		if(guard["floor_zero_init"])
+			_rateparam_floor_zero_init = guard["floor_zero_init"].as<bool>();
+	}
+	if(_rateparam_railguard_enabled && _rateparam_railguard_max <= _rateparam_railguard_min){
+		std::ostringstream msg;
+		msg << "Invalid rateparam_railguard range: max (" << _rateparam_railguard_max
+		    << ") must be greater than min (" << _rateparam_railguard_min << ")";
+		throw std::runtime_error(msg.str());
+	}
+	if(_rateparam_railguard_enabled && _rateparam_railguard_min <= 0.){
+		std::ostringstream msg;
+		msg << "Invalid rateparam_railguard min: " << _rateparam_railguard_min
+		    << " must be positive";
+		throw std::runtime_error(msg.str());
+	}
 	if(base["shape_transfer_fit"]){
 		if(base["shape_transfer_fit"]["bin_association"])
         		_shape_bin_ass = base["shape_transfer_fit"]["bin_association"].as<map<string,vector<string>>>();
@@ -383,11 +455,11 @@ void BuildFit::BuildShapeTransferFit(){
 					double anchor_yield = GetYieldValueOrZero(anchor_ch+_shape_anchor_bins[anchor_ch], proc, 1, "BuildShapeTransferFit proc transfer anchor");
 					double buoy_yield = GetYieldValueOrZero(buoy_bin, proc, 1, "BuildShapeTransferFit proc transfer buoy");
 					double proc_transfer_factor = anchor_yield > 0 ? buoy_yield/anchor_yield : 1.;
-					cb.cp().process({proc}).bin(buoy_bins).AddSyst(cb,buoy_ch+"Norm_"+proc,"rateParam",SystMap<>::init(proc_transfer_factor));
+					AddRateParam({proc}, buoy_bins, buoy_ch+"Norm_"+proc, proc_transfer_factor);
 				}
 			}
 			else{
-				cb.cp().process({_bkg_proc}).bin(buoy_bins).AddSyst(cb,buoy_ch+"Norm","rateParam",SystMap<>::init(transfer_factor));
+				AddRateParam({_bkg_proc}, buoy_bins, buoy_ch+"Norm", transfer_factor);
 			}
 			//loop through bins in buoy_ch to set observed rates
 			if(_datadriven && _asimov){ //if not asimov or not datadriven, 
@@ -483,7 +555,7 @@ void BuildFit::BuildABCDFit(){
 						cr_bins_matchidx.push_back(cr_bin);
 						double bkgrate_cr = GetYieldValue(cr_bin, _bkg_proc, 1, "BuildABCDFit CR rate");
 						//cb.cp().process({_bkg_proc}).bin({cr_bin}).AddSyst(cb, "scale_$BIN", "rateParam", SystMap<bin>::init({cr_bin}, bkgrate_cr));
-						cb.cp().process({pit->first}).bin({cr_bin}).AddSyst(cb, "scale_$BIN", "rateParam", SystMap<bin>::init({cr_bin}, bkgrate_cr));
+						AddRateParam({pit->first}, {cr_bin}, "scale_$BIN", bkgrate_cr);
 					}
 				}
 				//cout << " cr bins " << endl;
@@ -685,9 +757,8 @@ void BuildFit::BuildABCDFitSingleBin(){
 		for(auto cr_bin : cr_bins){
 			for(auto proc : fit_bkgprocs){
 				double bkgrate_cr = GetYieldValueOrZero(cr_bin, proc, 1, "BuildABCDFitSingleBin CR rate");
-				if(bkgrate_cr == 0) bkgrate_cr = 1e-8;
 				string pname = (_preserve_background_processes && !_datadriven) ? "scale_"+cr_bin+"_"+proc : "scale_$BIN";
-				cb.cp().process({proc}).bin({cr_bin}).AddSyst(cb, pname, "rateParam", SystMap<bin>::init({cr_bin}, bkgrate_cr));
+				AddRateParam({proc}, {cr_bin}, pname, bkgrate_cr);
 			}
 		}
 
