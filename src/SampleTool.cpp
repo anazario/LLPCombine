@@ -139,14 +139,22 @@ SampleTool::SampleTool(){
 				pathPrefix+"JetMET_R22_SVHPM100_MiniAOD_v34_JetMET_MINIAOD_Run2022D-19Dec2023-v1_rjrskim.root",
 				pathPrefix+"JetMET_R22_SVHPM100_MiniAOD_v34_JetMET_MINIAOD_Run2022E-19Dec2023-v1_rjrskim.root",
 				pathPrefix+"JetMET_R22_SVHPM100_MiniAOD_v34_JetMET_MINIAOD_Run2022F-19Dec2023-v2_rjrskim.root",
-				pathPrefix+"JetMET_R22_SVHPM100_MiniAOD_v34_JetMET_MINIAOD_Run2022G-19Dec2023-v1_rjrskim.root"};
+				"root://cmseos.fnal.gov//store/user/lpcsusylep/malazaro/KUCMSSkims/skims_v51/JetMET_Run2022G-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root"};
+				//pathPrefix+"JetMET_R22_SVHPM100_MiniAOD_v34_JetMET_MINIAOD_Run2022G-19Dec2023-v1_rjrskim.root"};
 
-	MasterDict["MET23"] = { pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET0_MINIAOD_Run2023B-19Dec2023-v1_rjrskim.root",
-				pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET0_MINIAOD_Run2023C-19Dec2023-v1_rjrskim.root",
-				pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET0_MINIAOD_Run2023D-19Dec2023-v1_rjrskim.root",
-				pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET1_MINIAOD_Run2023B-19Dec2023-v1_rjrskim.root",
-				pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET1_MINIAOD_Run2023C-19Dec2023-v1_rjrskim.root",
-				pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET1_MINIAOD_Run2023D-19Dec2023-v1_rjrskim.root"};
+	pathPrefix = "root://cmseos.fnal.gov//store/user/lpcsusylep/malazaro/KUCMSSkims/skims_v51/";
+	
+	MasterDict["MET23"] = { pathPrefix+"JetMET0_Run2023B-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root",
+				pathPrefix+"JetMET0_Run2023C-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root",
+				pathPrefix+"JetMET0_Run2023D-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root",
+				pathPrefix+"JetMET1_Run2023B-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root",
+				pathPrefix+"JetMET1_Run2023C-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root",
+				pathPrefix+"JetMET1_Run2023D-19Dec2023-v1__SVHPM100_v34_PixSeedFix__rjrskim_v51.root"};
+				//pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET0_MINIAOD_Run2023C-19Dec2023-v1_rjrskim.root",
+				//pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET0_MINIAOD_Run2023D-19Dec2023-v1_rjrskim.root",
+				//pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET1_MINIAOD_Run2023B-19Dec2023-v1_rjrskim.root",
+				//pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET1_MINIAOD_Run2023C-19Dec2023-v1_rjrskim.root",
+				//pathPrefix+"JetMET_R23_SVHPM100_MiniAOD_v34_JetMET1_MINIAOD_Run2023D-19Dec2023-v1_rjrskim.root"};
 
 	pathPrefix = "root://cmseos.fnal.gov//store/user/lpcsusylep/malazaro/KUCMSSkims/skims_v50/";
 	
