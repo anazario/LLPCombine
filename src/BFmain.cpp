@@ -110,7 +110,10 @@ int main(int argc, char* argv[]){
 			//do fit - function won't do anything if their corresponding section in the config yaml isn't filled
 			BF.BuildShapeTransferFit();
 			BF.BuildABCDFit();
+			//highDm channel names
 			BF.AddTemplateProcessABCD("Ch17CRgeq1PhoTightIsoEarly","Ch7CRgeq1PhoNotBHEarly");
+			//compresssed channel names
+			BF.AddTemplateProcessABCD("DelPho_TightIsoEarlyCR","DelPho_NotBHEarlyCR");
 			BF.SetObservations(); 
 			BF.DoSystematics();
 			//write datacard
