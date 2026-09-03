@@ -675,6 +675,9 @@ void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, string pr
 					cr_yields[targetcrch_idx] = double(int(cr_yields[targetcrch_idx] - pred_template_rate));
 					//update overall yield for target ch by subtracting out even contribution from every other process
 					_obs_rates[target_ch+binidx][proc] = pred_template_rate;
+					//overwrite old rateparam with new value
+					cout << "Overwriting rate param for bin " << target_ch+binidx << " proc " << pit->first << " with rate " << cr_yields[targetcrch_idx] << endl;
+					AddRateParam({pit->first}, {target_ch+binidx}, "scale_$BIN", cr_yields[targetcrch_idx]);
 					//cout << "subtract value " << double(int(pred_template_rate/(_obs_rates[target_ch+binidx].size()-1))) << " obs_rates size " << _obs_rates[target_ch+binidx].size() << endl;
 					_obs_rates[target_ch+binidx][pit->first] -= double(int(pred_template_rate/(_obs_rates[target_ch+binidx].size()-1)));
 					double predbkg_yield = double(int(cr_yields[0] * (cr_yields[1] / cr_yields[2])));
