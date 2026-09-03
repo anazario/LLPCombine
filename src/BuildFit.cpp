@@ -574,7 +574,7 @@ void BuildFit::BuildABCDFit(){
 				string cr_rateparams = "scale_"+cr_bins_matchidx[0];
 				for(int i = 1; i < (int)cr_bins_matchidx.size(); i++)
 					cr_rateparams += ",scale_"+cr_bins_matchidx[i];
-				//cout << "proc " << pit->first << " cr_rateparams " << cr_rateparams << " sr bin " << sr_bin << endl;
+				cout << "proc " << pit->first << " cr_rateparams " << cr_rateparams << " sr bin " << sr_bin << endl;
 				cb.cp().process({pit->first}).bin({sr_bin}).AddSyst(cb, "scale_$BIN_$PROCESS", "rateParam", SystMapFunc<>::init
 								("(@0*@1/@2)",cr_rateparams)
 					);
@@ -594,11 +594,15 @@ void BuildFit::BuildABCDFit(){
 }	
 
 
-void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, string proc){
+void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, double tf, string proc){
 	ch::Categories cats_abcd;
 	BuildCatsSubset(_bins_superset_abcd, cats_abcd);
 	double totint_srcch, totint_targetch;
-	double tf = 1e9;
+	bool calc_tf = false;
+	if(tf == -999){
+		tf = 1e9;
+		calc_tf = true;
+	}
 	for(auto c : cats_abcd){
 		if(c.second.find(target_ch) != string::npos){
 			if(proc == "")
@@ -610,7 +614,8 @@ void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, string pr
 			double targetch_yield = GetYieldValue(c.second, _bkg_proc, 1, "AddTemplateProcess rate");
 			totint_srcch += srcch_yield;
 			totint_targetch += targetch_yield;
-			if(targetch_yield / srcch_yield < tf) //take min ratio between src and target ch bins
+			cout << "bin " << binidx << " ratio " << targetch_yield / srcch_yield << endl;
+			if(calc_tf && (targetch_yield / srcch_yield < tf)) //take min ratio between src and target ch bins
 				tf = targetch_yield / srcch_yield;
 				
 			//cout << "bin " << binidx << " src " << src_ch << " yield " << GetYieldValue(src_ch+binidx, _bkg_proc,1,"AddTemplateProcess rate") << endl;
@@ -618,6 +623,7 @@ void BuildFit::AddTemplateProcessABCD(string src_ch, string target_ch, string pr
 		}
 	}
 	//tf = totint_targetch/totint_srcch;
+	cout << "template transfer factor " << tf << endl;
 //cout << "total src ch " << totint_srcch << " total target ch " << totint_targetch << " tf " << tf << endl;
 	vector<string> systbins;
         cb.ForEachProc([&](ch::Process *x){
@@ -814,6 +820,7 @@ void BuildFit::DoSystematics(){
 		}
 		cb.cp().process(procs).bin(syst._bins).AddSyst(cb, syst._name, syst._type, SystMap<>::init(syst._init_val));
 	}
+
 }
 //WriteDatacard
 void BuildFit::WriteDatacard(string datacard_dir, bool verbose){

@@ -72,7 +72,7 @@ class BuildFit{
 				//skip processes that don't contribute to this bin
 				if(it->second < 1e-10)
 					continue;
-				std::cout << "SumObs - bin " << bin << " proc " << it->first << " yield " << it->second << std::endl;	
+				//std::cout << "SumObs - bin " << bin << " proc " << it->first << " yield " << it->second << std::endl;	
                         	obs += it->second;
 			}
 			return obs;
@@ -97,7 +97,7 @@ class BuildFit{
 		void Build9binFitData(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
 		void BuildMultiChannel9bin(JSONFactory* j, std::string signalPoint, std::string datacard_dir, channelmap channelMap);
 
-		void AddTemplateProcessABCD(string src_ch, string target_ch, string proc = "");
+		void AddTemplateProcessABCD(string src_ch, string target_ch, double tf = -999, string proc = "");
 
 		std::vector<std::string> sigkeys = { "gogoZ", "gogoG", "gogoGZ", "sqsqZ", "sqsqG", "sqsqGZ" };
 		std::vector<std::string> datakeys = { "MET18", "DisplacedJet18", "data", "MET23"};
