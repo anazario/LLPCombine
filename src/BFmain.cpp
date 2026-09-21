@@ -75,7 +75,6 @@ int main(int argc, char* argv[]){
 
 	string current_signal;
 	try{
-		//TODO - automate fit config writing
 		JSONFactory* j = new JSONFactory(input_json);
 		std::vector<std::string> signals = j->GetSigProcs();
 
@@ -111,7 +110,11 @@ int main(int argc, char* argv[]){
 			//do fit - function won't do anything if their corresponding section in the config yaml isn't filled
 			BF.BuildShapeTransferFit();
 			BF.BuildABCDFit();
-			BF.SetObservations();
+			//highDm channel names
+			BF.AddTemplateProcessABCD("Ch17CRgeq1PhoTightIsoEarly","Ch7CRgeq1PhoNotBHEarly");
+			//compresssed channel names
+			BF.AddTemplateProcessABCD("DelPho_TightIsoEarlyCR","DelPho_NotBHEarlyCR");
+			BF.SetObservations(); 
 			BF.DoSystematics();
 			//write datacard
 			BF.WriteDatacard(datacard_dir, true);
