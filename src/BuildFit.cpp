@@ -110,9 +110,6 @@ void BuildFit::SetRateParamRange(const std::string& name, const std::vector<std:
 			std::string resolved = ResolveRateParamName(name, bin, proc);
 			if(!ranged_params.insert(resolved).second)
 				continue;
-
-			cb.CreateParameterIfEmpty(resolved);
-
 			ch::Parameter* param = cb.GetParameter(resolved);
 			if(param)
 				param->set_range(_rateparam_railguard_min, _rateparam_railguard_max);
@@ -910,7 +907,7 @@ std::vector<std::string> BuildFit::GetBkgProcs(JSONFactory* j){
                 std::string binname = it.key();
                 for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
                 //      std::cout<< it2.key()<<"\n";
-                        if( BFTool::ContainsAnySubstring( it2.key(), sigkeys) || it2.key() == "data_obs" || BFTool::ContainsAnySubstring(it2.key(),datakeys)){
+                        if( BFTool::ContainsAnySubstring( it2.key(), sigkeys) || it2.key() == "data_obs" || IsDataKey(it2.key()) || IsDataEraKey(it2.key())){
                                 continue;
                         }
 			//skip bkgs already there - get unique procs
@@ -930,7 +927,7 @@ std::vector<std::string> BuildFit::GetDataProcs(JSONFactory* j){
                 std::string binname = it.key();
                 for (json::iterator it2 = it.value().begin(); it2 != it.value().end(); ++it2){
                       //std::cout<< it2.key()<<"\n";
-                        if(  BFTool::ContainsAnySubstring(it2.key(),datakeys) ){
+                        if( IsDataKey(it2.key()) ){
                                 bkgprocs.push_back(it2.key());
                         }
                 }
