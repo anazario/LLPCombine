@@ -2,7 +2,7 @@
 analysis:
   name: "LittleGuy_Compressed_Validation_AnalysisConfig"
   luminosity: 424
-  output_json: "LittleGuy_Compressed_Validation_AnalysisConfig_v53.json"
+  output_json: "LittleGuy_Compressed_Validation_AnalysisConfig_v54.json"
 
 samples:
   signals: ["gogoGZ"]
@@ -40,7 +40,7 @@ noSV: &noSV
 
 # ABCD pass definitions
 geq1PhoBHEarly: &geq1PhoBHEarly
-  - "(passNPhoGe1SelectionEarlyBeamHaloCR == 1)"
+  - "(passNPhoGe1SelectionEarlyBeamHaloValCR == 1)"
   #- "(nBaseLinePhotons > 0)"
   ## >= 1 BH photon early
   #- "((nBaseLinePhotons == 1 && baseLinePhoton_beamHaloCNNScore[0] >= 0.917252 && baseLinePhoton_WTimeSig[0] < -2.5) || ( nBaseLinePhotons == 2 && ((baseLinePhoton_beamHaloCNNScore[0] >= 0.917252 && baseLinePhoton_WTimeSig[0] < -2.5) || (baseLinePhoton_beamHaloCNNScore[1] >= 0.917252 && baseLinePhoton_WTimeSig[1] < -2.5)) ) )"
@@ -346,7 +346,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b00
       - *noSV
       - *geq1PhoBHEarly
 
@@ -355,7 +355,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b00
       - *noSV
       - *geq1PhoBHLate
 
@@ -364,7 +364,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b00
       - *noSV
       - *geq1PhoNotBHEarly
 
@@ -373,7 +373,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b10
+      - *b00
       - *noSV
       - *geq1PhoNotBHLate
 
@@ -382,7 +382,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b00
       - *noSV
       - *geq1PhoMedIsoEarly
 
@@ -391,7 +391,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b00
       - *noSV
       - *geq1PhoMedIsoLate
 
@@ -400,7 +400,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b00
       - *noSV
       - *geq1PhoTightIsoEarly
 
@@ -436,7 +436,7 @@ bins:
       - *baseline_cuts
       - *Cleaning
       - *kinDelPho
-      - *b20
+      - *b10
       - *noSV
       - *geq1PhoNotBHLate
 
@@ -464,6 +464,69 @@ bins:
       - *Cleaning
       - *kinDelPho
       - *b10
+      - *noSV
+      - *geq1PhoTightIsoEarly
+
+  DelPho_BHEarlyCR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
+      - *noSV
+      - *geq1PhoBHEarly
+
+  DelPho_BHLateCR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
+      - *noSV
+      - *geq1PhoBHLate
+
+  DelPho_NotBHEarlyCR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
+      - *noSV
+      - *geq1PhoNotBHEarly
+
+  DelPho_NotBHLateSR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
+      - *noSV
+      - *geq1PhoNotBHLate
+
+  DelPho_MedIsoEarlyCR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
+      - *noSV
+      - *geq1PhoMedIsoEarly
+
+  DelPho_MedIsoLateCR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
+      - *noSV
+      - *geq1PhoMedIsoLate
+
+  DelPho_TightIsoEarlyCR20:
+    cuts:
+      - *baseline_cuts
+      - *Cleaning
+      - *kinDelPho
+      - *b20
       - *noSV
       - *geq1PhoTightIsoEarly
 
